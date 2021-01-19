@@ -103,8 +103,9 @@ impl Table {
                                 }
                             }
                         } else {
-                            self.set_null(raw_value);
-                            return raw_value.to_string();
+                            let name = format!("{}{}", raw_value, entry);
+                            self.set_null(&name);
+                            return name;
                         }
                     }
                 },

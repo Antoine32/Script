@@ -5,5 +5,11 @@ i = true
 o=false
 g="gosth"
 !i
-    p = b
-    l = !i
+k = a+g+a
+p = 8 - a
+p = p + p
+
+o = 5 * 5
+p = 120/7
+
+l = 5**5

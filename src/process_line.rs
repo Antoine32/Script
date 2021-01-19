@@ -1,5 +1,6 @@
 use crate::find_operator;
 use crate::kind::*;
+use crate::operation::*;
 use crate::table::*;
 use crate::variable::*;
 use crate::vec_table::*;
@@ -67,13 +68,11 @@ impl ProcessLine {
         spli = spli.into_iter().filter(|s| s.len() > 0).collect();
 
         for l in spli.iter() {
-            let name = i.to_string();
+            let name = format!("°{}", i);
 
             entry_list.push(table.set_any_from_file(&name, l));
 
-            if entry_list[entry_list.len() - 1] == name {
-                i += 1;
-            }
+            i += 1;
         }
 
         ProcessLine {
@@ -112,6 +111,8 @@ impl ProcessLine {
         let mut var_a: (Variable, &str) = (Variable::new_null(0), "null");
         let mut var_b: (Variable, &str) = (Variable::new_null(0), "null");
 
+        let mut delete: (bool, bool) = (true, true);
+
         let mut operator;
 
         let mut operator_priority = 1;
@@ -136,7 +137,7 @@ impl ProcessLine {
             var = (this.table.get(name), this.level);
 
             if var.0.kind == Kind::Null {
-                var = vec_table.get(name);
+                var = vec_table.get(name.get(0..(name.find('°').unwrap())).unwrap());
 
                 match var.0.kind {
                     Kind::String => this.table.set_string(
@@ -209,26 +210,35 @@ impl ProcessLine {
                             _ => {}
                         }
 
-                        var_a = (Variable::new_null(0), "null");
-                        var_b = (Variable::new_null(0), "null");
-
-                        this.remove(operator_position);
+                        delete = (false, false);
                     }
-                    POW => match operator {
-                        "**" => {}
-                        _ => {}
-                    },
-                    MULT_DIV_MOD => match operator {
-                        "*" => {}
-                        "/" => {}
-                        "%" => {}
-                        _ => {}
-                    },
-                    ADD_SUB => match operator {
-                        "+" => {}
-                        "-" => {}
-                        _ => {}
-                    },
+                    POW => {
+                        match operator {
+                            "**" => power(var_a, var_b, &mut this.table),
+                            _ => {}
+                        }
+
+                        delete = (false, true);
+                    }
+                    MULT_DIV_MOD => {
+                        match operator {
+                            "*" => multiplication(var_a, var_b, &mut this.table),
+                            "/" => division(var_a, var_b, &mut this.table),
+                            "%" => modulo(var_a, var_b, &mut this.table),
+                            _ => {}
+                        }
+
+                        delete = (false, true);
+                    }
+                    ADD_SUB => {
+                        match operator {
+                            "+" => addition(var_a, var_b, &mut this.table),
+                            "-" => substraction(var_a, var_b, &mut this.table),
+                            _ => {}
+                        }
+
+                        delete = (false, true);
+                    }
                     BIT_AND => {}
                     EXLUSIF_OR => {}
                     BIT_OR => {}
@@ -243,53 +253,47 @@ impl ProcessLine {
                     },
                     ASSIGNEMENT => {
                         match operator {
-                            "=" => {
-                                this.table.remove_value(var_a.1);
-                                match var_b.0.kind {
-                                    Kind::String => this.table.set_string(
-                                        var_a.1,
-                                        var_b.0.get_string(var_b.1, &this.table).unwrap(),
-                                    ),
-                                    Kind::Number => this.table.set_number(
-                                        var_a.1,
-                                        var_b.0.get_number(var_b.1, &this.table).unwrap(),
-                                    ),
-                                    Kind::Bool => this.table.set_bool(
-                                        var_a.1,
-                                        var_b.0.get_bool(var_b.1, &this.table).unwrap(),
-                                    ),
-                                    Kind::Operator => this.table.set_operator(var_a.1, var_b.0.pos),
-                                    Kind::Null => this.table.set_null(var_a.1),
-                                }
-                            }
+                            "=" => match var_b.0.kind {
+                                Kind::String => this.table.set_string(
+                                    var_a.1,
+                                    var_b.0.get_string(var_b.1, &this.table).unwrap(),
+                                ),
+                                Kind::Number => this.table.set_number(
+                                    var_a.1,
+                                    var_b.0.get_number(var_b.1, &this.table).unwrap(),
+                                ),
+                                Kind::Bool => this.table.set_bool(
+                                    var_a.1,
+                                    var_b.0.get_bool(var_b.1, &this.table).unwrap(),
+                                ),
+                                Kind::Operator => this.table.set_operator(var_a.1, var_b.0.pos),
+                                Kind::Null => this.table.set_null(var_a.1),
+                            },
                             _ => {}
                         }
 
-                        let name = this.entry_list[operator_position - 1].as_str();
-                        let v = this.table.get(name);
-                        var_a = (v.clone(), name);
+                        assign(
+                            this.entry_list[operator_position - 1].as_str(),
+                            &mut this.table,
+                            vec_table,
+                        );
 
-                        match var_a.0.kind {
-                            Kind::String => vec_table.set_string(
-                                var_a.1,
-                                var_a.0.get_string(var_a.1, &this.table).unwrap(),
-                            ),
-                            Kind::Number => vec_table.set_number(
-                                var_a.1,
-                                var_a.0.get_number(var_a.1, &this.table).unwrap(),
-                            ),
-                            Kind::Bool => vec_table
-                                .set_bool(var_a.1, var_a.0.get_bool(var_a.1, &this.table).unwrap()),
-                            _ => {}
-                        }
-
-                        var_a = (Variable::new_null(0), "null");
-                        var_b = (Variable::new_null(0), "null");
-
-                        this.remove(operator_position);
-                        this.remove(operator_position);
+                        delete = (false, true);
                     }
                     _ => break,
+                }
+
+                var_a = (Variable::new_null(0), "null");
+                var_b = (Variable::new_null(0), "null");
+
+                if delete.1 {
+                    this.remove(operator_position + 1);
+                }
+
+                this.remove(operator_position);
+
+                if delete.0 {
+                    this.remove(operator_position - 1);
                 }
 
                 operator_priority = max_priority;
