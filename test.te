@@ -3,7 +3,7 @@ b = "allo"
 k
 i = true
 o=false
-    p = b
-    l = !i
 g="gosth"
 !i
+    p = b
+    l = !i

@@ -133,7 +133,7 @@ fn main() {
 
     let mut process_lines: Vec<ProcessLine> = Vec::new();
 
-    vec_table.set_number("o", 973.0);
+    vec_table.set_number("lop", 973.0);
 
     let mut function: HashMap<&str, usize> = HashMap::new();
     function.insert("print", 0);

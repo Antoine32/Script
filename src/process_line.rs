@@ -265,6 +265,24 @@ impl ProcessLine {
                             _ => {}
                         }
 
+                        let name = this.entry_list[operator_position - 1].as_str();
+                        let v = this.table.get(name);
+                        var_a = (v.clone(), name);
+
+                        match var_a.0.kind {
+                            Kind::String => vec_table.set_string(
+                                var_a.1,
+                                var_a.0.get_string(var_a.1, &this.table).unwrap(),
+                            ),
+                            Kind::Number => vec_table.set_number(
+                                var_a.1,
+                                var_a.0.get_number(var_a.1, &this.table).unwrap(),
+                            ),
+                            Kind::Bool => vec_table
+                                .set_bool(var_a.1, var_a.0.get_bool(var_a.1, &this.table).unwrap()),
+                            _ => {}
+                        }
+
                         var_a = (Variable::new_null(0), "null");
                         var_b = (Variable::new_null(0), "null");
 
@@ -280,7 +298,7 @@ impl ProcessLine {
             }
         }
 
-        for i in 0..(this.entry_list.len()) {
+        /*for i in 0..(this.entry_list.len()) {
             let name = this.entry_list[i].as_str();
             let var = this.table.get(name);
 
@@ -302,7 +320,7 @@ impl ProcessLine {
                 ),
                 _ => {}
             }
-        }
+        }*/
 
         println!("\n------------------------------------------------------------\n");
     }
