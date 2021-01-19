@@ -50,7 +50,7 @@ impl VecTable {
         }
 
         while need < self.tables.len() {
-            self.add_level();
+            self.remove_level();
         }
     }
 
