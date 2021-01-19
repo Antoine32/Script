@@ -1,0 +1,133 @@
+use crate::table::*;
+use crate::variable::*;
+
+pub struct VecTable {
+    tables: Vec<Table>,
+}
+
+impl VecTable {
+    pub fn new() -> Self {
+        VecTable {
+            tables: Vec::from([Table::new(), Table::new()]),
+        }
+    }
+
+    // debug feature
+    pub fn print_tables(&self) {
+        println!("{}\t: {}\t: {}\t: {}", "table", "name", "kind", "value");
+
+        for i in 0..(self.tables.len()) {
+            println!("\n#{}", i);
+
+            for l in self.tables[i].variables.iter() {
+                println!(
+                    "\t: {}\t: {}\t: |{}|",
+                    l.0,
+                    l.1.kind,
+                    l.1.get_string(l.0, &self.tables[i]).unwrap()
+                );
+            }
+        }
+    }
+
+    pub fn add_level(&mut self) {
+        self.tables.push(Table::new());
+    }
+
+    pub fn remove_level(&mut self) {
+        self.tables.pop();
+    }
+
+    pub fn set_level(&mut self, mut need: usize) {
+        if need < 1 {
+            need = 1;
+        }
+
+        need += 1;
+
+        while need > self.tables.len() {
+            self.add_level();
+        }
+
+        while need < self.tables.len() {
+            self.add_level();
+        }
+    }
+
+    pub fn set_string_specified(&mut self, level: usize, entry: &str, value: String) {
+        self.tables[level].set_string(entry, value);
+    }
+
+    pub fn set_number_specified(&mut self, level: usize, entry: &str, value: f64) {
+        self.tables[level].set_number(entry, value);
+    }
+
+    pub fn set_bool_specified(&mut self, level: usize, entry: &str, value: bool) {
+        self.tables[level].set_bool(entry, value);
+    }
+
+    pub fn set_null_specified(&mut self, level: usize, entry: &str) {
+        self.tables[level].set_null(entry);
+    }
+
+    pub fn set_string(&mut self, entry: &str, value: String) {
+        for i in 0..(self.tables.len()) {
+            if self.tables[i].contains(entry) {
+                self.set_string_specified(i, entry, value);
+                return;
+            }
+        }
+
+        self.set_string_specified(self.tables.len() - 1, entry, value);
+    }
+
+    pub fn set_number(&mut self, entry: &str, value: f64) {
+        for i in 0..(self.tables.len()) {
+            if self.tables[i].contains(entry) {
+                self.set_number_specified(i, entry, value);
+                return;
+            }
+        }
+
+        self.set_number_specified(self.tables.len() - 1, entry, value);
+    }
+
+    pub fn set_bool(&mut self, entry: &str, value: bool) {
+        for i in 0..(self.tables.len()) {
+            if self.tables[i].contains(entry) {
+                self.set_bool_specified(i, entry, value);
+                return;
+            }
+        }
+
+        self.set_bool_specified(self.tables.len() - 1, entry, value);
+    }
+
+    pub fn set_null(&mut self, entry: &str) {
+        for i in 0..(self.tables.len()) {
+            if self.tables[i].contains(entry) {
+                self.set_null_specified(i, entry);
+                return;
+            }
+        }
+
+        self.set_null_specified(self.tables.len() - 1, entry);
+    }
+
+    pub fn get(&self, entry: &str) -> (&Variable, usize) {
+        for i in (0..(self.tables.len())).rev() {
+            if self.tables[i].contains(entry) {
+                return (self.tables[i].get(entry), i);
+            }
+        }
+
+        (
+            self.tables[self.tables.len() - 1].get(entry),
+            self.tables.len() - 1,
+        )
+    }
+
+    pub fn get_level(&self, level: usize) -> &Table {
+        &self.tables[level]
+    }
+}
