@@ -144,7 +144,7 @@ fn main() {
         .split_terminator(|c: char| c == '\n' || c == ';')
         .map(|c| c.trim_end())
         .filter(|c| c.len() > 0)
-        .collect();d
+        .collect();
 
     let mut i = 0;
     for line in lines.iter() {
