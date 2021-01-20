@@ -162,7 +162,7 @@ impl ProcessLine {
             var = (this.table.get(name), this.level);
 
             if var.0.kind == Kind::Null {
-                var = vec_table.get(name.get(0..(name.find('°').unwrap())).unwrap());
+                var = vec_table.get(name.get(0..(name.rfind('°').unwrap())).unwrap());
 
                 match var.0.kind {
                     Kind::String => this.table.set_string(

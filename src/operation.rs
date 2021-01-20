@@ -98,7 +98,7 @@ pub fn find_operator(string: &String) -> Result<(usize, usize), ()> {
 
 pub fn assign(name: &str, table: &mut Table, vec_table: &mut VecTable) {
     let var_a = (table.get(name), name);
-    let name = name.get(0..(name.find('°').unwrap())).unwrap();
+    let name = name.get(0..(name.rfind('°').unwrap())).unwrap();
 
     match var_a.0.kind {
         Kind::String => vec_table.set_string(name, var_a.0.get_string(var_a.1, table).unwrap()),

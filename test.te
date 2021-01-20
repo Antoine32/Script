@@ -1,3 +1,6 @@
-mina = 5
-pollo = "dsf"
-k = mina + pollo
+a = true && false
+b = true && false
+c = true && false
+d = true && false
+e = true && false
+f = true && false
