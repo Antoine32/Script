@@ -49,7 +49,15 @@ impl ProcessLine {
 
             match find_operator(&line) {
                 Ok((start, end)) => {
-                    spli.push(line.get(0..(start)).unwrap().trim().to_string());
+                    let mut string = line.get(0..(start)).unwrap().trim().to_string();
+
+                    if string.len() > 0 && string.chars().nth(0).unwrap() == '-' {
+                        spli.push("-1".to_string());
+                        spli.push("*".to_string());
+                        string = string.get(1..).unwrap().trim().to_string();
+                    }
+
+                    spli.push(string);
                     spli.push(line.get(start..(end)).unwrap().trim().to_string());
 
                     if end <= line.len() {
@@ -60,7 +68,15 @@ impl ProcessLine {
                 }
                 Err(_) => {
                     if line.len() > 0 {
-                        spli.push(line.trim().to_string());
+                        let mut string = line.trim().to_string();
+
+                        if string.len() > 0 && string.chars().nth(0).unwrap() == '-' {
+                            spli.push("-1".to_string());
+                            spli.push("*".to_string());
+                            string = string.get(1..).unwrap().trim().to_string();
+                        }
+
+                        spli.push(string);
                     }
 
                     line.replace_range(.., "");

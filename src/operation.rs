@@ -70,21 +70,21 @@ pub fn get_operator_num(value: &str) -> Result<usize, ()> {
 pub fn find_operator(string: &String) -> Result<(usize, usize), ()> {
     let mut position = string.len() + 1;
     let mut operator = "";
-    let mut priority = LEVELS_OF_PRIORITY;
+    //let mut priority = LEVELS_OF_PRIORITY;
 
-    for opt in OPERATORS.iter() {
-        let pri = PRIORITY[get_operator_num(*opt).unwrap()];
+    for i in 0..(OPERATORS.len()) {
+        let opt = OPERATORS[i];
+        let pri = PRIORITY[i];
 
-        if pri < priority {
-            for (pos, _) in string.match_indices(*opt) {
-                if pos < position && (pos > 0 || pri == NOT) {
-                    position = pos;
-                    operator = *opt;
-                    priority = pri;
-                    break;
-                }
+        //if pri < priority {
+        for (pos, _) in string.match_indices(opt) {
+            if pos < position && (pos > 0 || pri == NOT) {
+                position = pos;
+                operator = opt;
+                //priority = pri;
             }
         }
+        //}
     }
 
     println!("");

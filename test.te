@@ -1,6 +1,4 @@
-a = true && false
-b = true && false
-c = true && false
-d = true && false
-e = true && false
-f = true && false
+a = "You, seconde ago commited 500000"
+b = "You, seconde ago commited 500000"
+
+aaa = a + "\n" + b
