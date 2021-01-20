@@ -199,6 +199,7 @@ impl Table {
             self.remove_entry(var);
         }
     }
+
     pub fn contains(&self, entry: &str) -> bool {
         self.variables.contains_key(entry)
     }

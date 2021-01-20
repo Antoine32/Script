@@ -52,7 +52,7 @@ impl Variable {
             Kind::Bool => Ok(table.get_bool(self.pos).to_string()),
             Kind::Operator => Ok(OPERATORS[self.pos].to_string()),
             Kind::Null => Ok("null".to_string()),
-            _ => Err(self.get_err(entry, Kind::String)),
+            _ => Err(self.get_err(entry, Kind::String)), // here in case I need it later and for consistency
         }
     }
 

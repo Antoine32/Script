@@ -11,16 +11,14 @@ mod variable;
 mod vec_free;
 mod vec_table;
 
-use kind::*;
+//use kind::*;
 use operation::*;
 use process_line::*;
-use table::*;
-use variable::*;
+//use table::*;
+//use variable::*;
 use vec_table::*;
 
-//static NULL: Variable = Variable::new_null();
-
-fn quicksort<E: Ord>(arr: &mut [E]) {
+pub fn quicksort<E: Ord>(arr: &mut [E]) {
     if 1 < arr.len() {
         let (mut pivot, mut hi) = (0, arr.len() - 1);
         for _ in 0..arr.len() - 1 {
@@ -50,8 +48,6 @@ fn main() {
 
     let mut process_lines: Vec<ProcessLine> = Vec::new();
 
-    vec_table.set_number("lop", 973.0);
-
     let mut function: HashMap<&str, usize> = HashMap::new();
     function.insert("print", 0);
 
@@ -65,7 +61,7 @@ fn main() {
 
     let mut i = 0;
     for line in lines.iter() {
-        println!("{}: {} \t|{}|", i, line.len(), line);
+        println!("\n{}: {} \t|{}|", i, line.len(), line);
 
         process_lines.push(ProcessLine::new(line.to_string()));
         //process_lines[i].print_line();
@@ -77,9 +73,12 @@ fn main() {
 
     for process_line in process_lines.iter() {
         process_line.run(&mut vec_table);
+
+        println!("\n---------------------------------------------------------------------\n");
+
+        vec_table.print_tables();
+        
+        println!("\n---------------------------------------------------------------------\n");
+    
     }
-
-    println!("\n---------------------------------------------------------------------\n");
-
-    vec_table.print_tables();
 }
