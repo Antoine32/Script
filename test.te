@@ -1,2 +1,5 @@
 a = -5 + 4
 b = 5 * -a
+c = "allo me"
+c = c + " too"
+d = true || false ^ 5

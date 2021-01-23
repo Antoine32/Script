@@ -120,7 +120,7 @@ pub fn process_text(content: &str) -> Vec<ProcessLine> {
     return process_lines;
 }
 
-fn time_taken(elapsed: Duration) {
+fn time_taken(elapsed: Duration) -> String {
     let nano = elapsed.as_nanos() % 1000;
     let micros = elapsed.as_micros() % 1000;
     let millis = elapsed.as_millis() % 1000;
@@ -128,13 +128,17 @@ fn time_taken(elapsed: Duration) {
     let min = (elapsed.as_secs() / 60) % 60;
     let hour = (elapsed.as_secs() / 60) / 60;
 
-    println!("----------------- Time taken -----------------");
-    println!("Hour   : {}", hour);
-    println!("Minute : {}", min);
-    println!("Second : {}", sec);
-    println!("Millis : {}", millis);
-    println!("Micros : {}", micros);
-    println!("Nanos  : {}\n", nano);
+    let mut string = String::new();
+
+    string.push_str(&format!("----------------- Time taken -----------------\n"));
+    string.push_str(&format!("Hour   : {}\n", hour));
+    string.push_str(&format!("Minute : {}\n", min));
+    string.push_str(&format!("Second : {}\n", sec));
+    string.push_str(&format!("Millis : {}\n", millis));
+    string.push_str(&format!("Micros : {}\n", micros));
+    string.push_str(&format!("Nanos  : {}\n\n", nano));
+
+    return string;
 }
 
 fn main() {
@@ -163,12 +167,7 @@ fn main() {
 
     let time_c = timer_a.elapsed();
 
-    println!("\nTime A: ");
-    time_taken(time_a);
-
-    println!("\nTime B: ");
-    time_taken(time_b);
-
-    println!("\nTime C: ");
-    time_taken(time_c);
+    println!("\nTime A: \n{}", time_taken(time_a));
+    println!("\nTime B: \n{}", time_taken(time_b));
+    println!("\nTime C: \n{}", time_taken(time_c));
 }
