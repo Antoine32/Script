@@ -1,7 +1,7 @@
-use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
+use std::time::{Duration, Instant};
 
 mod kind;
 mod operation;
@@ -17,6 +17,22 @@ use process_line::*;
 //use table::*;
 //use variable::*;
 use vec_table::*;
+
+#[macro_export]
+macro_rules! eprint {
+    ($($rest:tt)*) => {
+        #[cfg(debug_assertions)]
+        std::eprint!($($rest)*)
+    }
+}
+
+#[macro_export]
+macro_rules! eprintln {
+    ($($rest:tt)*) => {
+        #[cfg(debug_assertions)]
+        std::eprintln!($($rest)*)
+    }
+}
 
 pub fn quicksort<E: Ord>(arr: &mut [E]) {
     if 1 < arr.len() {
@@ -35,7 +51,7 @@ pub fn quicksort<E: Ord>(arr: &mut [E]) {
     }
 }
 
-fn readfile(filename: &str) -> std::io::Result<String> {
+pub fn readfile(filename: &str) -> std::io::Result<String> {
     let file = File::open(filename)?;
     let mut buf_reader = BufReader::new(file);
     let mut contents = String::new();
@@ -43,22 +59,116 @@ fn readfile(filename: &str) -> std::io::Result<String> {
     Ok(contents)
 }
 
+pub fn decode_string(string: &str) -> String {
+    let mut val = String::new();
+    let mut bypass = false;
+
+    let perm = string.len() > 0 && string.chars().nth(0).unwrap() == '\"';
+
+    for c in string.chars() {
+        if bypass {
+            match c {
+                'n' => {
+                    val.push('\n');
+                }
+                't' => {
+                    val.push('\t');
+                }
+                'r' => {
+                    val.push('\r');
+                }
+                _ => {
+                    val.push(c);
+                }
+            }
+
+            bypass = false;
+        } else {
+            match c {
+                '\\' => {
+                    bypass = true;
+                }
+                '\"' => {}
+                '\'' => {
+                    if perm {
+                        val.push(c);
+                    }
+                }
+                _ => {
+                    val.push(c);
+                }
+            }
+        }
+    }
+
+    return val;
+}
+
+pub fn process_text(content: &str) -> Vec<ProcessLine> {
+    let mut process_lines: Vec<ProcessLine> = Vec::new();
+
+    let lines: Vec<&str> = content
+        .split_terminator(|c: char| c == '\n' || c == ';')
+        .filter(|c| c.len() > 0)
+        .collect();
+
+    for i in 0..(lines.len()) {
+        eprint!("\n{}: ", i);
+        process_lines.push(ProcessLine::new(lines[i].to_string()));
+    }
+
+    return process_lines;
+}
+
+fn time_taken(elapsed: Duration) {
+    let nano = elapsed.as_nanos() % 1000;
+    let micros = elapsed.as_micros() % 1000;
+    let millis = elapsed.as_millis() % 1000;
+    let sec = elapsed.as_secs() % 60;
+    let min = (elapsed.as_secs() / 60) % 60;
+    let hour = (elapsed.as_secs() / 60) / 60;
+
+    println!("----------------- Time taken -----------------");
+    println!("Hour   : {}", hour);
+    println!("Minute : {}", min);
+    println!("Second : {}", sec);
+    println!("Millis : {}", millis);
+    println!("Micros : {}", micros);
+    println!("Nanos  : {}\n", nano);
+}
+
 fn main() {
     let mut vec_table = VecTable::new();
 
-    let mut function: HashMap<&str, usize> = HashMap::new();
-    function.insert("print", 0);
+    let timer_a = Instant::now();
 
     let process_lines = process_text(&readfile("test.te").unwrap());
 
-    println!("\n---------------------------------------------------------------------\n");
+    let time_a = timer_a.elapsed();
+
+    eprintln!("\n---------------------------------------------------------------------\n");
+
+    let timer_b = Instant::now();
 
     for process_line in process_lines.iter() {
         process_line.run(&mut vec_table);
 
-        println!("\n---------------------------------------------------------------------\n");
+        eprintln!("\n---------------------------------------------------------------------\n");
 
         vec_table.print_tables();
-        println!("\n---------------------------------------------------------------------\n");
+        eprintln!("\n---------------------------------------------------------------------\n");
     }
+
+    let time_b = timer_b.elapsed();
+
+    let time_c = timer_a.elapsed();
+
+    println!("\nTime A: ");
+    time_taken(time_a);
+
+    println!("\nTime B: ");
+    time_taken(time_b);
+
+    println!("\nTime C: ");
+    time_taken(time_c);
 }

@@ -1,7 +1,8 @@
-use crate::get_operator_num;
+use crate::eprintln;
 use crate::kind::*;
 use crate::variable::*;
 use crate::vec_free::*;
+use crate::{decode_string, get_operator_num};
 use num::BigInt;
 use std::collections::HashMap;
 
@@ -34,10 +35,10 @@ impl Table {
 
     // debug feature
     pub fn print_variables(&self) {
-        println!("\n{}\t: {}\t: {}\n", "name", "kind", "value");
+        eprintln!("\n{}\t: {}\t: {}\n", "name", "kind", "value");
 
         for l in self.variables.iter() {
-            println!(
+            eprintln!(
                 "{}\t: {}\t: |{}|",
                 l.0,
                 l.1.kind,

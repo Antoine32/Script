@@ -3,6 +3,7 @@ use crate::table::*;
 use crate::variable::*;
 use crate::vec_table::*;
 use num::{BigInt, One, Signed, Zero};
+use crate::{eprintln};
 
 // Operator
 pub const OPERATORS: [&str; 28] = [
@@ -10,6 +11,7 @@ pub const OPERATORS: [&str; 28] = [
     ">=", "<", ">", "=", "+", "-", "*", "/", "%", "!", "^", "&", "|",
 ];
 
+/*
 pub const ASG: u8 = 0; // assign =
 pub const NOT: u8 = 1; // not !
 pub const ADD: u8 = 2; // add +
@@ -28,6 +30,7 @@ pub const GRE: u8 = 14; // greater-then >
 pub const LES: u8 = 15; // lesser-then <
 pub const EGRE: u8 = 16; // greater-then or equal >=
 pub const ELES: u8 = 17; // lesser-then or equal <=
+*/
 
 // Priority
 pub const P_NOT: u8 = 0; // !
@@ -109,7 +112,7 @@ pub fn get_operator_num(value: &str) -> Result<usize, ()> {
         //}
     }
 
-    println!("");
+    eprintln!("");
 
     if position < string.len() {
         Ok((position, position + operator.len()))

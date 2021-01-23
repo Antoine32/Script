@@ -1,3 +1,4 @@
+use crate::eprintln;
 use crate::table::*;
 use crate::variable::*;
 use num::BigInt;
@@ -15,13 +16,13 @@ impl VecTable {
 
     // debug feature
     pub fn print_tables(&self) {
-        println!("{}\t: {}\t: {}\t: {}", "table", "name", "kind", "value");
+        eprintln!("{}\t: {}\t: {}\t: {}", "table", "name", "kind", "value");
 
         for i in 0..(self.tables.len()) {
-            println!("\n#{}", i);
+            eprintln!("\n#{}", i);
 
             for l in self.tables[i].variables.iter() {
-                println!(
+                eprintln!(
                     "\t: {}\t: {}\t: |{}|",
                     l.0,
                     l.1.kind,

@@ -1,24 +1,9 @@
+use crate::eprintln;
 use crate::kind::*;
 use crate::operation::*;
 use crate::table::*;
 use crate::variable::*;
 use crate::vec_table::*;
-
-pub fn process_text(content: &str) -> Vec<ProcessLine> {
-    let mut process_lines: Vec<ProcessLine> = Vec::new();
-
-    let lines: Vec<&str> = content
-        .split_terminator(|c: char| c == '\n' || c == ';')
-        .filter(|c| c.len() > 0)
-        .collect();
-
-    for i in 0..(lines.len()) {
-        print!("\n{}: ", i);
-        process_lines.push(ProcessLine::new(lines[i].to_string()));
-    }
-
-    return process_lines;
-}
 
 pub struct ProcessLine {
     pub level: usize,
@@ -30,7 +15,7 @@ pub struct ProcessLine {
 impl ProcessLine {
     pub fn new(mut line: String) -> Self {
         line = line.trim_end().to_string();
-        println!("{} \t|{}|", line.len(), line);
+        eprintln!("{} \t|{}|", line.len(), line);
 
         fn add_variable(
             table: &mut Table,
@@ -169,7 +154,7 @@ impl ProcessLine {
 
         /*loop {
             line = line.trim().to_string();
-            println!("{}", line);
+            eprintln!("{}", line);
 
             match find_operator(&line) {
                 Ok((start, end)) => {
@@ -226,7 +211,7 @@ impl ProcessLine {
         }*/
 
         for p in to_print.iter() {
-            println!("{}", p);
+            eprintln!("{}", p);
         }
 
         let mut count = vec![0; entry_list.len()];
@@ -265,13 +250,13 @@ impl ProcessLine {
     }
 
     pub fn print_line(&self) {
-        println!("level: {}", self.level);
-        println!("\n{}\t: {}\t: {}\n", "name", "kind", "value");
+        eprintln!("level: {}", self.level);
+        eprintln!("\n{}\t: {}\t: {}\n", "name", "kind", "value");
 
         for name in self.entry_list.iter() {
             let var = self.table.get(name);
 
-            println!(
+            eprintln!(
                 "{}\t: {}\t: |{}|",
                 name,
                 var.kind,
@@ -279,7 +264,7 @@ impl ProcessLine {
             );
         }
 
-        println!("\n------------------------------\n");
+        eprintln!("\n------------------------------\n");
     }
 
     pub fn run(&self, vec_table: &mut VecTable) {
@@ -478,7 +463,7 @@ impl ProcessLine {
             }
         }
 
-        println!("\n------------------------------------------------------------\n");
+        eprintln!("\n------------------------------------------------------------\n");
     }
 }
 
