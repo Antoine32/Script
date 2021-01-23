@@ -2,6 +2,7 @@ use crate::get_operator_num;
 use crate::kind::*;
 use crate::variable::*;
 use crate::vec_free::*;
+use num::BigInt;
 use std::collections::HashMap;
 
 pub struct Table {
@@ -9,6 +10,7 @@ pub struct Table {
     //
     vec_string: VecFree<String>,
     vec_number: VecFree<f64>,
+    vec_bigint: VecFree<BigInt>,
     vec_bool: VecFree<bool>,
     vec_null: VecFree<String>,
     //
@@ -22,6 +24,7 @@ impl Table {
             //
             vec_string: VecFree::new(),
             vec_number: VecFree::new(),
+            vec_bigint: VecFree::new(),
             vec_bool: VecFree::new(),
             vec_null: VecFree::new(),
             //
@@ -43,46 +46,7 @@ impl Table {
         }
     }
 
-    pub fn decode_string(&self, string: &str) -> String {
-        let mut val = String::new();
-        let mut bypass = false;
-
-        for c in string.chars() {
-            if bypass {
-                match c {
-                    'n' => {
-                        val.push('\n');
-                    }
-                    't' => {
-                        val.push('\t');
-                    }
-                    'r' => {
-                        val.push('\r');
-                    }
-                    _ => {
-                        val.push(c);
-                    }
-                }
-
-                bypass = false;
-            } else {
-                match c {
-                    '\\' => {
-                        bypass = true;
-                    }
-                    '\"' => {}
-                    '\'' => {}
-                    _ => {
-                        val.push(c);
-                    }
-                }
-            }
-        }
-
-        return val;
-    }
-
-    pub fn set_any_from_file(&mut self, entry: &str, raw_value: &str) -> String {
+    /*pub fn set_any_from_file(&mut self, entry: &str, raw_value: &str) -> String {
         match get_operator_num(&raw_value) {
             Ok(value) => self.set_operator(entry, value),
             //
@@ -113,6 +77,17 @@ impl Table {
         }
 
         return entry.to_string();
+    }*/
+
+    pub fn set_from_file(&mut self, entry: &str, raw_value: &str, kind: Kind) {
+        match kind {
+            Kind::String => self.set_string(entry, decode_string(raw_value)),
+            Kind::Number => self.set_number(entry, raw_value.parse::<f64>().unwrap()),
+            Kind::BigInt => self.set_bigint(entry, raw_value.parse::<BigInt>().unwrap()),
+            Kind::Bool => self.set_bool(entry, raw_value.parse::<bool>().unwrap()),
+            Kind::Operator => self.set_operator(entry, get_operator_num(raw_value).unwrap()),
+            Kind::Null => self.set_null(entry),
+        }
     }
 
     fn set(&mut self, entry: &str, pos: usize, kind: Kind) -> usize {
@@ -131,6 +106,7 @@ impl Table {
                 let var = match kind {
                     Kind::String => Variable::new_string(pos),
                     Kind::Number => Variable::new_number(pos),
+                    Kind::BigInt => Variable::new_bigint(pos),
                     Kind::Bool => Variable::new_bool(pos),
                     _ => Variable::new_null(pos),
                 };
@@ -159,6 +135,16 @@ impl Table {
         if pos_a != pos_b {
             self.vec_number.remove(pos_a);
             self.vec_number[pos_b] = value;
+        }
+    }
+
+    pub fn set_bigint(&mut self, entry: &str, value: BigInt) {
+        let pos_a = self.vec_bigint.add(value.clone());
+        let pos_b = self.set(entry, pos_a, Kind::BigInt);
+
+        if pos_a != pos_b {
+            self.vec_bigint.remove(pos_a);
+            self.vec_bigint[pos_b] = value;
         }
     }
 
@@ -228,6 +214,10 @@ impl Table {
         self.vec_number[pos]
     }
 
+    pub fn get_bigint(&self, pos: usize) -> BigInt {
+        self.vec_bigint[pos].clone()
+    }
+
     pub fn get_bool(&self, pos: usize) -> bool {
         self.vec_bool[pos]
     }
@@ -238,6 +228,10 @@ impl Table {
 
     pub fn get_mut_number(&mut self, pos: usize) -> &mut f64 {
         &mut self.vec_number[pos]
+    }
+
+    pub fn get_mut_bigint(&mut self, pos: usize) -> &mut BigInt {
+        &mut self.vec_bigint[pos]
     }
 
     pub fn get_mut_bool(&mut self, pos: usize) -> &mut bool {
@@ -259,6 +253,9 @@ impl Table {
             }
             Kind::Number => {
                 self.vec_number.remove(pos);
+            }
+            Kind::BigInt => {
+                self.vec_bigint.remove(pos);
             }
             Kind::Bool => {
                 self.vec_bool.remove(pos);
@@ -284,6 +281,7 @@ impl Clone for Table {
             //
             vec_string: self.vec_string.clone(),
             vec_number: self.vec_number.clone(),
+            vec_bigint: self.vec_bigint.clone(),
             vec_bool: self.vec_bool.clone(),
             vec_null: self.vec_null.clone(),
             //

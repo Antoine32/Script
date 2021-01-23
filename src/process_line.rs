@@ -1,49 +1,173 @@
-use crate::find_operator;
 use crate::kind::*;
 use crate::operation::*;
 use crate::table::*;
 use crate::variable::*;
 use crate::vec_table::*;
-use crate::OPERATORS;
-use crate::PRIORITY;
-use crate::{
-    ADD_SUB, AND, ASSIGNEMENT, BIT_AND, BIT_OR, COMPARAISON, EXLUSIF_OR, MULT_DIV_MOD, NOT, OR, POW,
-};
+
+pub fn process_text(content: &str) -> Vec<ProcessLine> {
+    let mut process_lines: Vec<ProcessLine> = Vec::new();
+
+    let lines: Vec<&str> = content
+        .split_terminator(|c: char| c == '\n' || c == ';')
+        .filter(|c| c.len() > 0)
+        .collect();
+
+    for i in 0..(lines.len()) {
+        print!("\n{}: ", i);
+        process_lines.push(ProcessLine::new(lines[i].to_string()));
+    }
+
+    return process_lines;
+}
 
 pub struct ProcessLine {
+    pub level: usize,
     pub table: Table,
     pub entry_list: Vec<String>,
     pub operator_order: [Vec<usize>; LEVELS_OF_PRIORITY as usize],
-    pub level: usize,
 }
 
 impl ProcessLine {
     pub fn new(mut line: String) -> Self {
+        line = line.trim_end().to_string();
+        println!("{} \t|{}|", line.len(), line);
+
+        fn add_variable(
+            table: &mut Table,
+            last_kind: &mut Kind,
+            last_raw_value: &mut String,
+            entry_list: &mut Vec<String>,
+            operator_order: &mut [Vec<usize>; LEVELS_OF_PRIORITY as usize],
+            to_print: &mut Vec<String>,
+            raw_value: &str,
+            kind: Kind,
+        ) {
+            if raw_value != " " {
+                to_print.push(format!("|{}|, {}, {}", raw_value, kind, raw_value.len()));
+
+                let i = entry_list.len();
+
+                let name = format!(
+                    "{}°{}",
+                    {
+                        if kind == Kind::Null {
+                            raw_value
+                        } else {
+                            ""
+                        }
+                    },
+                    entry_list.len()
+                );
+
+                table.set_from_file(&name, raw_value, kind);
+
+                let var = table.get(&name);
+                if var.kind == Kind::Operator {
+                    let pri = PRIORITY[var.pos];
+                    operator_order[pri as usize].push(i);
+                }
+
+                entry_list.push(name);
+            }
+
+            *last_kind = kind;
+            *last_raw_value = raw_value.to_string();
+        }
+
+        let mut level = 0;
         let mut table = Table::new();
-
-        let mut spli: Vec<String> = Vec::new();
         let mut entry_list: Vec<String> = Vec::new();
-
         let mut operator_order: [Vec<usize>; LEVELS_OF_PRIORITY as usize] = Default::default();
 
         for i in 0..(operator_order.len()) {
             operator_order[i] = Vec::new();
         }
 
-        let mut level = 0;
+        let mut leveling = true;
 
-        for c in line.chars() {
-            if c.is_whitespace() {
-                level += 1;
+        let line_char: Vec<char> = line.chars().collect();
+        let mut n: usize = 0;
+        let mut c: char;
+
+        let mut last_kind: Kind = Kind::Operator;
+        let mut last_raw_value: String = String::new();
+
+        let mut to_print: Vec<String> = Vec::new();
+
+        while n < line_char.len() {
+            c = line_char[n];
+
+            if leveling {
+                if c.is_whitespace() {
+                    level += 1;
+                    n += 1;
+                } else {
+                    level /= 4;
+                    level += 1;
+                    leveling = false;
+                }
+            } else if !c.is_whitespace() {
+                let (raw_value, kind) = get_kind_possibility(line_char.get(n..).unwrap());
+
+                if raw_value == "-" && last_kind == Kind::Operator {
+                    if last_raw_value.as_str() == "+" {
+                        operator_order[P_ADD_SUB as usize].pop();
+                        entry_list.pop();
+                        to_print.pop();
+
+                        add_variable(
+                            &mut table,
+                            &mut last_kind,
+                            &mut last_raw_value,
+                            &mut entry_list,
+                            &mut operator_order,
+                            &mut to_print,
+                            &raw_value,
+                            kind,
+                        );
+                    } else {
+                        add_variable(
+                            &mut table,
+                            &mut last_kind,
+                            &mut last_raw_value,
+                            &mut entry_list,
+                            &mut operator_order,
+                            &mut to_print,
+                            "-1",
+                            Kind::Number,
+                        );
+
+                        add_variable(
+                            &mut table,
+                            &mut last_kind,
+                            &mut last_raw_value,
+                            &mut entry_list,
+                            &mut operator_order,
+                            &mut to_print,
+                            "*",
+                            Kind::Operator,
+                        );
+                    }
+                } else {
+                    add_variable(
+                        &mut table,
+                        &mut last_kind,
+                        &mut last_raw_value,
+                        &mut entry_list,
+                        &mut operator_order,
+                        &mut to_print,
+                        &raw_value,
+                        kind,
+                    );
+                }
+
+                n += raw_value.len();
             } else {
-                break;
+                n += 1;
             }
         }
 
-        level /= 4;
-        level += 1;
-
-        loop {
+        /*loop {
             line = line.trim().to_string();
             println!("{}", line);
 
@@ -84,11 +208,11 @@ impl ProcessLine {
                     break;
                 }
             }
-        }
+        }*/
 
-        spli = spli.into_iter().filter(|s| s.len() > 0).collect();
+        //spli = spli.into_iter().filter(|s| s.len() > 0).collect();
 
-        for i in 0..(spli.len()) {
+        /*for i in 0..(spli.len()) {
             let mut name = format!("°{}", i);
             name = table.set_any_from_file(&name, &spli[i]);
 
@@ -99,6 +223,10 @@ impl ProcessLine {
             }
 
             entry_list.push(name);
+        }*/
+
+        for p in to_print.iter() {
+            println!("{}", p);
         }
 
         let mut count = vec![0; entry_list.len()];
@@ -110,7 +238,7 @@ impl ProcessLine {
                 operator_order[i][j] -= count[pos];
 
                 let diff: usize = {
-                    if i as u8 == NOT {
+                    if i as u8 == P_NOT {
                         1
                     } else {
                         2
@@ -124,14 +252,14 @@ impl ProcessLine {
         }
 
         ProcessLine {
+            level: level,
             table: table,
             entry_list: entry_list,
             operator_order: operator_order,
-            level: level,
         }
     }
 
-    pub fn remove(&mut self, pos: usize) {
+    fn remove(&mut self, pos: usize) {
         let name = self.entry_list.remove(pos);
         self.table.remove_entry(&name);
     }
@@ -189,6 +317,10 @@ impl ProcessLine {
                         name,
                         var.0.get_number(name, vec_table.get_level(var.1)).unwrap(),
                     ),
+                    Kind::BigInt => this.table.set_bigint(
+                        name,
+                        var.0.get_bigint(name, vec_table.get_level(var.1)).unwrap(),
+                    ),
                     Kind::Bool => this.table.set_bool(
                         name,
                         var.0.get_bool(name, vec_table.get_level(var.1)).unwrap(),
@@ -200,21 +332,6 @@ impl ProcessLine {
 
         while operator_priority < LEVELS_OF_PRIORITY {
             this.print_line();
-
-            /*for i in 0..(this.entry_list.len()) {
-                let name = this.entry_list[i].as_str();
-                var = (this.table.get(name), this.level);
-
-                match var.0.kind {
-                    Kind::Operator => {
-                        if PRIORITY[var.0.pos] < operator_priority {
-                            operator_priority = PRIORITY[var.0.pos];
-                            operator_position = i;
-                        }
-                    }
-                    _ => {}
-                }
-            }*/
 
             while operator_priority < LEVELS_OF_PRIORITY
                 && this.operator_order[operator_priority as usize].len() == 0
@@ -247,7 +364,7 @@ impl ProcessLine {
                 delete = (false, true);
 
                 match operator_priority {
-                    NOT => {
+                    P_NOT => {
                         match operator {
                             "!" => match var_b.0.kind {
                                 Kind::Bool => {
@@ -263,34 +380,34 @@ impl ProcessLine {
 
                         delete = (false, false);
                     }
-                    POW => match operator {
+                    P_POW => match operator {
                         "**" => power(&var_a, &var_b, &mut this.table),
                         _ => {}
                     },
-                    MULT_DIV_MOD => match operator {
+                    P_MULT_DIV_MOD => match operator {
                         "*" => multiplication(&var_a, &var_b, &mut this.table),
                         "/" => division(&var_a, &var_b, &mut this.table),
                         "%" => modulo(&var_a, &var_b, &mut this.table),
                         _ => {}
                     },
-                    ADD_SUB => match operator {
+                    P_ADD_SUB => match operator {
                         "+" => addition(&var_a, &var_b, &mut this.table),
                         "-" => substraction(&var_a, &var_b, &mut this.table),
                         _ => {}
                     },
-                    BIT_AND => match operator {
+                    P_BIT_AND => match operator {
                         "&" => bit_and(&var_a, &var_b, &mut this.table),
                         _ => {}
                     },
-                    EXLUSIF_OR => match operator {
+                    P_EXLUSIF_OR => match operator {
                         "^" => exclusif_or(&var_a, &var_b, &mut this.table),
                         _ => {}
                     },
-                    BIT_OR => match operator {
+                    P_BIT_OR => match operator {
                         "|" => bit_or(&var_a, &var_b, &mut this.table),
                         _ => {}
                     },
-                    COMPARAISON => match operator {
+                    P_COMPARAISON => match operator {
                         "==" => equal(&var_a, &var_b, &mut this.table),
                         "!=" => not_equal(&var_a, &var_b, &mut this.table),
                         ">=" => greater_equal(&var_a, &var_b, &mut this.table),
@@ -299,15 +416,15 @@ impl ProcessLine {
                         "<" => less(&var_a, &var_b, &mut this.table),
                         _ => {}
                     },
-                    AND => match operator {
+                    P_AND => match operator {
                         "&&" => and(&var_a, &var_b, &mut this.table),
                         _ => {}
                     },
-                    OR => match operator {
+                    P_OR => match operator {
                         "||" => or(&var_a, &var_b, &mut this.table),
                         _ => {}
                     },
-                    ASSIGNEMENT => {
+                    P_ASSIGNEMENT => {
                         match operator {
                             "=" => match var_b.0.kind {
                                 Kind::String => this.table.set_string(
@@ -317,6 +434,10 @@ impl ProcessLine {
                                 Kind::Number => this.table.set_number(
                                     var_a.1,
                                     var_b.0.get_number(var_b.1, &this.table).unwrap(),
+                                ),
+                                Kind::BigInt => this.table.set_bigint(
+                                    var_a.1,
+                                    var_b.0.get_bigint(var_b.1, &this.table).unwrap(),
                                 ),
                                 Kind::Bool => this.table.set_bool(
                                     var_a.1,
@@ -357,30 +478,6 @@ impl ProcessLine {
             }
         }
 
-        /*for i in 0..(this.entry_list.len()) {
-            let name = this.entry_list[i].as_str();
-            let var = this.table.get(name);
-
-            match var.kind {
-                Kind::String => vec_table.set_string_specified(
-                    this.level,
-                    name,
-                    var.get_string(name, &this.table).unwrap(),
-                ),
-                Kind::Number => vec_table.set_number_specified(
-                    this.level,
-                    name,
-                    var.get_number(name, &this.table).unwrap(),
-                ),
-                Kind::Bool => vec_table.set_bool_specified(
-                    this.level,
-                    name,
-                    var.get_bool(name, &this.table).unwrap(),
-                ),
-                _ => {}
-            }
-        }*/
-
         println!("\n------------------------------------------------------------\n");
     }
 }
@@ -395,20 +492,3 @@ impl Clone for ProcessLine {
         }
     }
 }
-
-/*
-
-                            if var_a.0.kind == var_b.0.kind {
-                                match var_a.0.kind {
-                                    Kind::String => {
-                                    }
-                                    Kind::Number => {}
-                                    Kind::Bool => {}
-                                    _ => {}
-                                }
-                            } else {
-                                match (var_a.0.kind, var_b.0.kind) {
-                                    _ => {}
-                                }
-                            }
-*/

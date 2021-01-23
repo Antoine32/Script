@@ -1,5 +1,6 @@
 use crate::table::*;
 use crate::variable::*;
+use num::BigInt;
 
 pub struct VecTable {
     tables: Vec<Table>,
@@ -62,6 +63,10 @@ impl VecTable {
         self.tables[level].set_number(entry, value);
     }
 
+    pub fn set_bigint_specified(&mut self, level: usize, entry: &str, value: BigInt) {
+        self.tables[level].set_bigint(entry, value);
+    }
+
     pub fn set_bool_specified(&mut self, level: usize, entry: &str, value: bool) {
         self.tables[level].set_bool(entry, value);
     }
@@ -90,6 +95,17 @@ impl VecTable {
         }
 
         self.set_number_specified(self.tables.len() - 1, entry, value);
+    }
+
+    pub fn set_bigint(&mut self, entry: &str, value: BigInt) {
+        for i in 0..(self.tables.len()) {
+            if self.tables[i].contains(entry) {
+                self.set_bigint_specified(i, entry, value);
+                return;
+            }
+        }
+
+        self.set_bigint_specified(self.tables.len() - 1, entry, value);
     }
 
     pub fn set_bool(&mut self, entry: &str, value: bool) {

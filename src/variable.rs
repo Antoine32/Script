@@ -1,4 +1,5 @@
 use crate::{kind::*, table::*, OPERATORS};
+use num::{BigInt, FromPrimitive, One, Zero};
 
 pub struct Variable {
     pub kind: Kind,
@@ -19,6 +20,10 @@ impl Variable {
 
     pub fn new_number(pos: usize) -> Self {
         Variable::new(Kind::Number, pos)
+    }
+
+    pub fn new_bigint(pos: usize) -> Self {
+        Variable::new(Kind::BigInt, pos)
     }
 
     pub fn new_bool(pos: usize) -> Self {
@@ -49,6 +54,7 @@ impl Variable {
         match self.kind {
             Kind::String => Ok(table.get_string(self.pos).to_string()),
             Kind::Number => Ok(table.get_number(self.pos).to_string()),
+            Kind::BigInt => Ok(table.get_bigint(self.pos).to_string()),
             Kind::Bool => Ok(table.get_bool(self.pos).to_string()),
             Kind::Operator => Ok(OPERATORS[self.pos].to_string()),
             Kind::Null => Ok("null".to_string()),
@@ -59,6 +65,7 @@ impl Variable {
     pub fn get_number(&self, entry: &str, table: &Table) -> Result<f64, String> {
         match self.kind {
             Kind::Number => Ok(table.get_number(self.pos)),
+            //Kind::BigInt => Ok(table.get_bigint(self.pos)),
             Kind::Bool => Ok({
                 if table.get_bool(self.pos) {
                     1.0
@@ -71,9 +78,26 @@ impl Variable {
         }
     }
 
+    pub fn get_bigint(&self, entry: &str, table: &Table) -> Result<BigInt, String> {
+        match self.kind {
+            Kind::Number => Ok(BigInt::from_f64(table.get_number(self.pos)).unwrap()),
+            Kind::BigInt => Ok(table.get_bigint(self.pos)),
+            Kind::Bool => Ok({
+                if table.get_bool(self.pos) {
+                    BigInt::one()
+                } else {
+                    BigInt::zero()
+                }
+            }),
+            Kind::Null => Ok(BigInt::zero()),
+            _ => Err(self.get_err(entry, Kind::BigInt)),
+        }
+    }
+
     pub fn get_bool(&self, entry: &str, table: &Table) -> Result<bool, String> {
         match self.kind {
             Kind::Number => Ok(table.get_number(self.pos) >= 1.0),
+            Kind::BigInt => Ok(table.get_bigint(self.pos) >= BigInt::one()),
             Kind::Bool => Ok(table.get_bool(self.pos)),
             Kind::Null => Ok(false),
             _ => Err(self.get_err(entry, Kind::Bool)),
@@ -86,115 +110,6 @@ impl Variable {
             _ => Err(self.get_err(entry, Kind::Operator)),
         }
     }
-
-    /*pub fn get_null(&self) -> Result<&Variable, String> {
-        match self.kind {
-            Kind::Null => Ok(self),
-            _ => Err(self.get_err(Kind::Null)),
-        }
-    }*/
-
-    /*pub fn set_str(
-        &mut self,
-        value: String,
-        vec_str: &mut Vec<String>,
-        vec_num: &mut Vec<f64>,
-        vec_bool: &mut Vec<bool>,
-    ) {
-        match &self.kind {
-            Kind::Number => {
-                vec_num.remove(self.pos);
-            }
-            Kind::Bool => {
-                vec_bool.remove(self.pos);
-            }
-            _ => {}
-        }
-
-        match &self.kind {
-            Kind::String => {
-                vec_str[self.pos] = value;
-            }
-            _ => {
-                self.kind = Kind::String;
-                self.pos = vec_str.len();
-                vec_str.push(value);
-            }
-        }
-    }
-
-    pub fn set_num(
-        &mut self,
-        value: f64,
-        vec_str: &mut Vec<String>,
-        vec_num: &mut Vec<f64>,
-        vec_bool: &mut Vec<bool>,
-    ) {
-        match &self.kind {
-            Kind::String => {
-                vec_str.remove(self.pos);
-            }
-            Kind::Bool => {
-                vec_bool.remove(self.pos);
-            }
-            _ => {}
-        }
-
-        match &self.kind {
-            Kind::Number => {
-                vec_num[self.pos] = value;
-            }
-            _ => {
-                self.kind = Kind::Number;
-                self.pos = vec_num.len();
-                vec_num.push(value);
-            }
-        }
-    }
-
-    pub fn set_bool(&mut self, value: bool, table: &mut Tables) {
-        match &self.kind {
-            Kind::Bool => {
-                table.vec_bool[self.pos] = value;
-            }
-            _ => {
-                table.remove_entry(&self.entry);
-
-                self.kind = Kind::Bool;
-                self.pos = table.push_bool(value);
-            }
-        }
-    }
-
-    pub fn set_operator(&mut self, value: &str, table: &mut Tables) {
-        table.remove_entry(&self.entry);
-
-        self.kind = Kind::Operator;
-        self.pos = get_operator_num(&value);
-    }
-
-    pub fn set_null(
-        &mut self,
-        vec_str: &mut Vec<String>,
-        vec_num: &mut Vec<f64>,
-        vec_bool: &mut Vec<bool>,
-    ) {
-        match &self.kind {
-            Kind::String => {
-                vec_str.remove(self.pos);
-            }
-            Kind::Number => {
-                vec_num.remove(self.pos);
-            }
-            Kind::Bool => {
-                vec_bool.remove(self.pos);
-            }
-            _ => {}
-        }
-
-        self.kind = Kind::Null;
-        self.pos = 0;
-    }*/
 }
 
 impl Clone for Variable {
@@ -204,4 +119,49 @@ impl Clone for Variable {
             pos: self.pos.clone(),
         }
     }
+}
+
+pub fn decode_string(string: &str) -> String {
+    let mut val = String::new();
+    let mut bypass = false;
+
+    let perm = string.len() > 0 && string.chars().nth(0).unwrap() == '\"';
+
+    for c in string.chars() {
+        if bypass {
+            match c {
+                'n' => {
+                    val.push('\n');
+                }
+                't' => {
+                    val.push('\t');
+                }
+                'r' => {
+                    val.push('\r');
+                }
+                _ => {
+                    val.push(c);
+                }
+            }
+
+            bypass = false;
+        } else {
+            match c {
+                '\\' => {
+                    bypass = true;
+                }
+                '\"' => {}
+                '\'' => {
+                    if perm {
+                        val.push(c);
+                    }
+                }
+                _ => {
+                    val.push(c);
+                }
+            }
+        }
+    }
+
+    return val;
 }

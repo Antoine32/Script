@@ -46,28 +46,10 @@ fn readfile(filename: &str) -> std::io::Result<String> {
 fn main() {
     let mut vec_table = VecTable::new();
 
-    let mut process_lines: Vec<ProcessLine> = Vec::new();
-
     let mut function: HashMap<&str, usize> = HashMap::new();
     function.insert("print", 0);
 
-    let content: String = readfile("test.te").unwrap();
-
-    let lines: Vec<&str> = content
-        .split_terminator(|c: char| c == '\n' || c == ';')
-        .map(|c| c.trim_end())
-        .filter(|c| c.len() > 0)
-        .collect();
-
-    let mut i = 0;
-    for line in lines.iter() {
-        println!("\n{}: {} \t|{}|", i, line.len(), line);
-
-        process_lines.push(ProcessLine::new(line.to_string()));
-        //process_lines[i].print_line();
-
-        i += 1;
-    }
+    let process_lines = process_text(&readfile("test.te").unwrap());
 
     println!("\n---------------------------------------------------------------------\n");
 
@@ -77,8 +59,6 @@ fn main() {
         println!("\n---------------------------------------------------------------------\n");
 
         vec_table.print_tables();
-        
         println!("\n---------------------------------------------------------------------\n");
-    
     }
 }

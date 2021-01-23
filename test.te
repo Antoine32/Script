@@ -1,4 +1,2 @@
-a = "You, seconde ago commited 500000"
-b = "You, seconde ago commited 500000"
-
-aaa = a + "\n" + b
+a = -5 + 4
+b = 5 * -a
