@@ -89,7 +89,7 @@ pub fn get_operator_num(value: &str) -> Result<usize, ()> {
     Err(())
 }
 
-pub fn find_operator(string: &str) -> Result<(usize, usize), ()> {
+/*pub fn find_operator(string: &str) -> Result<(usize, usize), ()> {
     let mut position = string.len() + 1;
     let mut operator = "";
     //let mut priority = LEVELS_OF_PRIORITY;
@@ -116,7 +116,7 @@ pub fn find_operator(string: &str) -> Result<(usize, usize), ()> {
     } else {
         Err(())
     }
-}
+}*/
 
 pub fn assign(name: &str, table: &mut Table, vec_table: &mut VecTable) {
     let var_a = (table.get(name), name);
