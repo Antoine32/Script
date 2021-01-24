@@ -13,6 +13,109 @@ pub const OPERATORS: [&str; 28] = [
     ">=", "<", ">", "=", "+", "-", "*", "/", "%", "!", "^", "&", "|",
 ];
 
+pub enum Intruction {
+    ASG,
+    NOT,
+    ADD,
+    SUB,
+    MUL,
+    DIV,
+    MOD,
+    POW,
+    EQU,
+    NEQU,
+    XOR,
+    BAND,
+    BOR,
+    AND,
+    OR,
+    GRE,
+    LES,
+    EGRE,
+    ELES,
+}
+
+impl std::fmt::Display for Intruction {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Intruction::ASG => write!(f, "ASG"),
+            Intruction::NOT => write!(f, "NOT"),
+            Intruction::ADD => write!(f, "ADD"),
+            Intruction::SUB => write!(f, "SUB"),
+            Intruction::MUL => write!(f, "MUL"),
+            Intruction::DIV => write!(f, "DIV"),
+            Intruction::MOD => write!(f, "MOD"),
+            Intruction::POW => write!(f, "POW"),
+            Intruction::EQU => write!(f, "EQU"),
+            Intruction::NEQU => write!(f, "NEQU"),
+            Intruction::XOR => write!(f, "XOR"),
+            Intruction::BAND => write!(f, "BAND"),
+            Intruction::BOR => write!(f, "BOR"),
+            Intruction::AND => write!(f, "AND"),
+            Intruction::OR => write!(f, "OR"),
+            Intruction::GRE => write!(f, "GRE"),
+            Intruction::LES => write!(f, "LES"),
+            Intruction::EGRE => write!(f, "EGRE"),
+            Intruction::ELES => write!(f, "ELES"),
+        }
+    }
+}
+
+impl std::cmp::PartialEq for Intruction {
+    fn eq(&self, other: &Self) -> bool {
+        match self {
+            Intruction::ASG => matches!(other, Intruction::ASG),
+            Intruction::NOT => matches!(other, Intruction::NOT),
+            Intruction::ADD => matches!(other, Intruction::ADD),
+            Intruction::SUB => matches!(other, Intruction::SUB),
+            Intruction::MUL => matches!(other, Intruction::MUL),
+            Intruction::DIV => matches!(other, Intruction::DIV),
+            Intruction::MOD => matches!(other, Intruction::MOD),
+            Intruction::POW => matches!(other, Intruction::POW),
+            Intruction::EQU => matches!(other, Intruction::EQU),
+            Intruction::NEQU => matches!(other, Intruction::NEQU),
+            Intruction::XOR => matches!(other, Intruction::XOR),
+            Intruction::BAND => matches!(other, Intruction::BAND),
+            Intruction::BOR => matches!(other, Intruction::BOR),
+            Intruction::AND => matches!(other, Intruction::AND),
+            Intruction::OR => matches!(other, Intruction::OR),
+            Intruction::GRE => matches!(other, Intruction::GRE),
+            Intruction::LES => matches!(other, Intruction::LES),
+            Intruction::EGRE => matches!(other, Intruction::EGRE),
+            Intruction::ELES => matches!(other, Intruction::ELES),
+        }
+    }
+}
+
+impl Clone for Intruction {
+    fn clone(&self) -> Self {
+        match self {
+            Intruction::ASG => Intruction::ASG,
+            Intruction::NOT => Intruction::NOT,
+            Intruction::ADD => Intruction::ADD,
+            Intruction::SUB => Intruction::SUB,
+            Intruction::MUL => Intruction::MUL,
+            Intruction::DIV => Intruction::DIV,
+            Intruction::MOD => Intruction::MOD,
+            Intruction::POW => Intruction::POW,
+            Intruction::EQU => Intruction::EQU,
+            Intruction::NEQU => Intruction::NEQU,
+            Intruction::XOR => Intruction::XOR,
+            Intruction::BAND => Intruction::BAND,
+            Intruction::BOR => Intruction::BOR,
+            Intruction::AND => Intruction::AND,
+            Intruction::OR => Intruction::OR,
+            Intruction::GRE => Intruction::GRE,
+            Intruction::LES => Intruction::LES,
+            Intruction::EGRE => Intruction::EGRE,
+            Intruction::ELES => Intruction::ELES,
+        }
+    }
+}
+
+impl Copy for Intruction {}
+
+/*
 pub const ASG: usize = 0; // assign =
 pub const NOT: usize = 1; // not !
 pub const ADD: usize = 2; // add +
@@ -38,6 +141,7 @@ pub const TAB_OP: [&str; 19] = [
     "ASG", "NOT", "ADD", "SUB", "MUL", "DIV", "MOD", "POW", "EQU", "NEQU", "XOR", "BAND", "BOR",
     "AND", "OR", "GRE", "LES", "EGRE", "ELES",
 ];
+*/
 
 // Priority
 pub const P_NOT: usize = 0; // !

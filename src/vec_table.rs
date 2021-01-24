@@ -44,10 +44,6 @@ impl VecTable {
     }
 
     pub fn set_level(&mut self, mut need: usize) {
-        if need < 1 {
-            need = 1;
-        }
-
         need += 1;
 
         while need > self.tables.len() {

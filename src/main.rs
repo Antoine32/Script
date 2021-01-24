@@ -110,47 +110,78 @@ pub fn decode_string(string: &str) -> String {
     return val;
 }
 
-pub fn process_text(content: &str) -> Vec<ProcessLine> {
-    let mut process_lines: Vec<ProcessLine> = Vec::new();
-
-    #[cfg(feature = "multithread")]
-    let mut receivers: Vec<std::sync::mpsc::Receiver<(ProcessLine, String)>> = Vec::new();
-
-    let lines: Vec<&str> = content
-        .split_terminator(|c: char| c == '\n' || c == ';')
-        //.filter(|c| c.len() > 0)
-        .collect();
-
-    for i in 0..(lines.len()) {
-        eprint!("\n{}: ", i);
-
-        let line = lines[i].to_string();
-
-        #[cfg(feature = "multithread")]
-        {
+#[cfg(feature = "multithread")]
+pub fn new_thread(
+    receivers: &mut Vec<std::sync::mpsc::Receiver<(ProcessLine, String)>>,
+    lines: &mut Vec<String>,
+    n: &mut usize,
+) {
+    match lines.pop() {
+        Some(line) => {
             let (sender, receiver_ext) = sync_channel(2);
             receivers.push(receiver_ext);
 
-            thread::spawn(move || {
-                sender.send(ProcessLine::new(line)).unwrap();
-            });
-        }
+            let na = *n;
 
-        #[cfg(not(feature = "multithread"))]
-        {
+            thread::spawn(move || {
+                sender.send(ProcessLine::new(line, na)).unwrap();
+            });
+
+            *n += 1;
+        }
+        None => {
+            //receivers.remove(*i);
+        }
+    }
+}
+
+pub fn process_text(content: String) -> Vec<ProcessLine> {
+    let mut lines: Vec<String> = content
+        .replace(";\n", "\n")
+        .replace(";", "\n")
+        .rsplit(|c: char| c == '\n' || c == ';')
+        //.filter(|c| c.len() > 0)
+        .map(|s| s.to_string())
+        .collect();
+
+    let mut process_lines: Vec<ProcessLine> = Vec::with_capacity(lines.len());
+
+    let mut n: usize = 0;
+
+    #[cfg(not(feature = "multithread"))]
+    {
+        while lines.len() > 0 {
             #[allow(unused_variables)]
-            let (processed_line, to_print) = ProcessLine::new(line);
+            let (processed_line, to_print) = ProcessLine::new(lines.pop().unwrap(), n);
             process_lines.push(processed_line);
             eprintln!("{}", to_print);
+
+            n += 1;
         }
     }
 
     #[cfg(feature = "multithread")]
-    for i in 0..(receivers.len()) {
-        #[allow(unused_variables)]
-        let (processed_line, to_print) = receivers[i].recv().unwrap();
-        process_lines.push(processed_line);
-        eprintln!("{}", to_print);
+    {
+        let len = lines.len();
+
+        let mut receivers: Vec<std::sync::mpsc::Receiver<(ProcessLine, String)>> =
+            Vec::with_capacity(len);
+
+        while lines.len() > 0 {
+            new_thread(&mut receivers, &mut lines, &mut n);
+        }
+
+        while process_lines.len() < len && receivers.len() > 0 {
+            for i in 0..(receivers.len()) {
+                #[allow(unused_variables)]
+                let (processed_line, to_print) = receivers[i].recv().unwrap();
+                process_lines.push(processed_line);
+
+                //new_thread(&mut receivers, &mut lines, &mut n, &mut i);
+
+                eprintln!("{}", to_print);
+            }
+        }
     }
 
     return process_lines;
@@ -182,7 +213,7 @@ fn main() {
 
     let timer_a = Instant::now();
 
-    let process_lines = process_text(&readfile("test.te").unwrap());
+    let process_lines = process_text(readfile("test.te").unwrap());
 
     let time_a = timer_a.elapsed();
 

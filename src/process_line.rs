@@ -1,6 +1,7 @@
 use crate::kind::*;
 use crate::operation::*;
 use crate::table::*;
+use crate::variable::*;
 use crate::vec_table::*;
 
 #[allow(unused_imports)]
@@ -10,110 +11,158 @@ pub struct ProcessLine {
     pub level: usize,
     pub table: Table,
     pub imported: Vec<(String, String)>,
-    pub operations: Vec<(usize, (String, String))>,
+    pub operations: Vec<(Intruction, Vec<String>)>,
 }
 
 impl ProcessLine {
-    pub fn new(mut line: String) -> (Self, String) {
-        line = line.trim_end().to_string();
+    #[allow(unused_variables)]
+    pub fn new(mut line: String, n: usize) -> (Self, String) {
+        #[warn(unused_variables)]
+        {
+            line = line.trim_end().to_string();
 
-        #[cfg(feature = "print")]
-        let mut to_print_vec: Vec<String> = Vec::new();
+            #[cfg(feature = "print")]
+            let mut to_print_vec: Vec<String> = Vec::new();
 
-        #[cfg(feature = "print")]
-        to_print_vec.push(format!("{} \t|{}|\n", line.len(), line));
+            #[cfg(feature = "print")]
+            to_print_vec.push(format!("\n{}: \n{} \t|{}|\n", n, line.len(), line));
 
-        fn add_variable(
-            table: &mut Table,
-            last_kind: &mut Kind,
-            last_raw_value: &mut String,
-            entry_list: &mut Vec<String>,
-            imported: &mut Vec<(String, String)>,
-            operator_order: &mut [Vec<usize>; LEVELS_OF_PRIORITY as usize],
-            raw_value: &str,
-            kind: Kind,
-        ) -> String {
-            *last_kind = kind;
-            *last_raw_value = raw_value.to_string();
+            fn add_variable(
+                table: &mut Table,
+                last_kind: &mut Kind,
+                last_raw_value: &mut String,
+                entry_list: &mut Vec<String>,
+                imported: &mut Vec<(String, String)>,
+                operator_order: &mut [Vec<usize>; LEVELS_OF_PRIORITY as usize],
+                raw_value: &str,
+                kind: Kind,
+            ) -> String {
+                *last_kind = kind;
+                *last_raw_value = raw_value.to_string();
 
-            if raw_value != " " {
-                let i = entry_list.len();
+                if raw_value != " " {
+                    let i = entry_list.len();
 
-                let name = format!(
-                    "{}°{}",
-                    {
-                        if kind == Kind::Null {
-                            raw_value
-                        } else {
-                            ""
-                        }
-                    },
-                    entry_list.len()
-                );
+                    let name = format!(
+                        "{}°{}",
+                        {
+                            if kind == Kind::Null {
+                                raw_value
+                            } else {
+                                ""
+                            }
+                        },
+                        entry_list.len()
+                    );
 
-                if kind == Kind::Null {
-                    imported.push((name.to_string(), raw_value.to_string()));
+                    if kind == Kind::Null {
+                        imported.push((name.to_string(), raw_value.to_string()));
+                    }
+
+                    table.set_from_file(&name, raw_value, kind);
+
+                    let var = table.get(&name);
+                    if var.kind == Kind::Operator {
+                        let pri = PRIORITY[var.pos];
+                        operator_order[pri as usize].push(i);
+                    }
+
+                    entry_list.push(name);
+
+                    #[cfg(feature = "print")]
+                    return format!("|{}|, {}, {}", raw_value, kind, raw_value.len());
                 }
 
-                table.set_from_file(&name, raw_value, kind);
-
-                let var = table.get(&name);
-                if var.kind == Kind::Operator {
-                    let pri = PRIORITY[var.pos];
-                    operator_order[pri as usize].push(i);
-                }
-
-                entry_list.push(name);
-
-                #[cfg(feature = "print")]
-                return format!("|{}|, {}, {}", raw_value, kind, raw_value.len());
+                return String::new();
             }
 
-            return String::new();
-        }
+            let mut level = 0;
+            let mut table = Table::new();
+            let mut imported = Vec::new();
+            let mut entry_list: Vec<String> = Vec::new();
+            let mut operator_order: [Vec<usize>; LEVELS_OF_PRIORITY as usize] = Default::default();
 
-        let mut level = 0;
-        let mut table = Table::new();
-        let mut imported = Vec::new();
-        let mut entry_list: Vec<String> = Vec::new();
-        let mut operator_order: [Vec<usize>; LEVELS_OF_PRIORITY as usize] = Default::default();
+            for i in 0..(operator_order.len()) {
+                operator_order[i] = Vec::new();
+            }
 
-        for i in 0..(operator_order.len()) {
-            operator_order[i] = Vec::new();
-        }
+            let mut leveling = true;
 
-        let mut leveling = true;
+            let line_char: Vec<char> = line.chars().collect();
+            let mut n: usize = 0;
+            let mut c: char;
 
-        let line_char: Vec<char> = line.chars().collect();
-        let mut n: usize = 0;
-        let mut c: char;
+            let mut last_kind: Kind = Kind::Operator;
+            let mut last_raw_value: String = String::new();
 
-        let mut last_kind: Kind = Kind::Operator;
-        let mut last_raw_value: String = String::new();
+            while n < line_char.len() {
+                c = line_char[n];
 
-        while n < line_char.len() {
-            c = line_char[n];
+                if leveling {
+                    if c.is_whitespace() {
+                        level += 1;
+                        n += 1;
+                    } else {
+                        level /= 4;
+                        leveling = false;
+                    }
+                } else if !c.is_whitespace() {
+                    let (raw_value, kind) = get_kind_possibility(line_char.get(n..).unwrap());
 
-            if leveling {
-                if c.is_whitespace() {
-                    level += 1;
-                    n += 1;
-                } else {
-                    level /= 4;
-                    level += 1;
-                    leveling = false;
-                }
-            } else if !c.is_whitespace() {
-                let (raw_value, kind) = get_kind_possibility(line_char.get(n..).unwrap());
+                    if raw_value == "-" && last_kind == Kind::Operator {
+                        if last_raw_value.as_str() == "+" {
+                            operator_order[P_ADD_SUB as usize].pop();
+                            entry_list.pop();
 
-                if raw_value == "-" && last_kind == Kind::Operator {
-                    if last_raw_value.as_str() == "+" {
-                        operator_order[P_ADD_SUB as usize].pop();
-                        entry_list.pop();
+                            #[cfg(feature = "print")]
+                            to_print_vec.pop();
 
-                        #[cfg(feature = "print")]
-                        to_print_vec.pop();
+                            #[allow(unused_variables)]
+                            let buf = add_variable(
+                                &mut table,
+                                &mut last_kind,
+                                &mut last_raw_value,
+                                &mut entry_list,
+                                &mut imported,
+                                &mut operator_order,
+                                &raw_value,
+                                kind,
+                            );
 
+                            #[cfg(feature = "print")]
+                            to_print_vec.push(buf);
+                        } else {
+                            #[allow(unused_variables)]
+                            let buf = add_variable(
+                                &mut table,
+                                &mut last_kind,
+                                &mut last_raw_value,
+                                &mut entry_list,
+                                &mut imported,
+                                &mut operator_order,
+                                "-1",
+                                Kind::Number,
+                            );
+
+                            #[cfg(feature = "print")]
+                            to_print_vec.push(buf);
+
+                            #[allow(unused_variables)]
+                            let buf = add_variable(
+                                &mut table,
+                                &mut last_kind,
+                                &mut last_raw_value,
+                                &mut entry_list,
+                                &mut imported,
+                                &mut operator_order,
+                                "*",
+                                Kind::Operator,
+                            );
+
+                            #[cfg(feature = "print")]
+                            to_print_vec.push(buf);
+                        }
+                    } else {
                         #[allow(unused_variables)]
                         let buf = add_variable(
                             &mut table,
@@ -128,104 +177,59 @@ impl ProcessLine {
 
                         #[cfg(feature = "print")]
                         to_print_vec.push(buf);
-                    } else {
-                        #[allow(unused_variables)]
-                        let buf = add_variable(
-                            &mut table,
-                            &mut last_kind,
-                            &mut last_raw_value,
-                            &mut entry_list,
-                            &mut imported,
-                            &mut operator_order,
-                            "-1",
-                            Kind::Number,
-                        );
-
-                        #[cfg(feature = "print")]
-                        to_print_vec.push(buf);
-
-                        #[allow(unused_variables)]
-                        let buf = add_variable(
-                            &mut table,
-                            &mut last_kind,
-                            &mut last_raw_value,
-                            &mut entry_list,
-                            &mut imported,
-                            &mut operator_order,
-                            "*",
-                            Kind::Operator,
-                        );
-
-                        #[cfg(feature = "print")]
-                        to_print_vec.push(buf);
                     }
+
+                    n += raw_value.len();
                 } else {
-                    #[allow(unused_variables)]
-                    let buf = add_variable(
-                        &mut table,
-                        &mut last_kind,
-                        &mut last_raw_value,
-                        &mut entry_list,
-                        &mut imported,
-                        &mut operator_order,
-                        &raw_value,
-                        kind,
-                    );
-
-                    #[cfg(feature = "print")]
-                    to_print_vec.push(buf);
+                    n += 1;
                 }
-
-                n += raw_value.len();
-            } else {
-                n += 1;
             }
-        }
 
-        let mut count = vec![0; entry_list.len()];
+            let mut count = vec![0; entry_list.len()];
 
-        for i in 0..(operator_order.len()) {
-            for j in 0..(operator_order[i].len()) {
-                let pos = operator_order[i][j];
+            for i in 0..(operator_order.len()) {
+                for j in 0..(operator_order[i].len()) {
+                    let pos = operator_order[i][j];
 
-                operator_order[i][j] -= count[pos];
+                    operator_order[i][j] -= count[pos];
 
-                let diff: usize = {
-                    if i == P_NOT {
-                        1
-                    } else {
-                        2
+                    let diff: usize = {
+                        if i == P_NOT {
+                            1
+                        } else {
+                            2
+                        }
+                    };
+
+                    for k in pos..(count.len()) {
+                        count[k] += diff;
                     }
-                };
-
-                for k in pos..(count.len()) {
-                    count[k] += diff;
                 }
             }
+
+            let operations = convert(table.clone(), &mut entry_list, &mut operator_order);
+
+            table.clear_null();
+            table.clear_operator();
+
+            #[allow(unused_mut)]
+            let mut to_print = String::new();
+
+            #[cfg(feature = "print")]
+            for p in to_print_vec.iter() {
+                to_print.push_str(p);
+            }
+
+            (
+                ProcessLine {
+                    level: level,
+                    table: table,
+                    imported: imported,
+                    operations: operations,
+                },
+                to_print,
+            )
         }
-
-        let operations = convert(table.clone(), &mut entry_list, &mut operator_order);
-
-        table.clear_null();
-        table.clear_operator();
-
-        #[allow(unused_mut)]
-        let mut to_print = String::new();
-
-        #[cfg(feature = "print")]
-        for p in to_print_vec.iter() {
-            to_print.push_str(p);
-        }
-
-        (
-            ProcessLine {
-                level: level,
-                table: table,
-                imported: imported,
-                operations: operations,
-            },
-            to_print,
-        )
     }
 
     #[cfg(feature = "print")]
@@ -244,12 +248,13 @@ impl ProcessLine {
 
     #[cfg(feature = "print")]
     pub fn print_line(&self, n: usize) {
-        let (instuction, (var_a, var_b)) = &self.operations[n];
+        let (instuction, names) = &self.operations[n];
 
-        eprint!("{}\t", TAB_OP[*instuction]);
+        eprint!("{}\t", instuction);
 
-        self.print_var(var_a);
-        self.print_var(var_b);
+        for name in names.iter() {
+            self.print_var(name);
+        }
 
         eprintln!("");
     }
@@ -288,9 +293,12 @@ impl ProcessLine {
         eprintln!("level: {}", self.level);
         eprintln!("\n{}\t: {}\t: {}\n", "name", "kind", "value");
 
-        for (instruction, (name_a, name_b)) in this.operations.iter() {
-            let var_a = this.table.get(name_a).clone();
-            let var_b = this.table.get(name_b).clone();
+        for (instruction, names) in this.operations.iter() {
+            let mut vars: Vec<Variable> = Vec::with_capacity(names.len());
+
+            for name in names.iter() {
+                vars.push(this.table.get(name).clone());
+            }
 
             #[cfg(feature = "print")]
             {
@@ -299,31 +307,56 @@ impl ProcessLine {
             }
 
             match *instruction {
-                ASG => {
-                    assign(&var_b, name_a, name_b, &mut this.table, vec_table);
+                Intruction::ASG => {
+                    assign(&vars[1], &names[0], &names[1], &mut this.table, vec_table);
                 }
-                NOT => {
-                    this.table
-                        .set_bool(name_b, !var_b.get_bool(name_b, &this.table).unwrap());
+                Intruction::NOT => {
+                    this.table.set_bool(
+                        &names[0],
+                        !vars[0].get_bool(&names[0], &this.table).unwrap(),
+                    );
                 }
-                ADD => addition(&var_a, &var_b, name_a, name_b, &mut this.table),
-                SUB => substraction(&var_a, &var_b, name_a, name_b, &mut this.table),
-                MUL => multiplication(&var_a, &var_b, name_a, name_b, &mut this.table),
-                DIV => division(&var_a, &var_b, name_a, name_b, &mut this.table),
-                MOD => modulo(&var_a, &var_b, name_a, name_b, &mut this.table),
-                POW => power(&var_a, &var_b, name_a, name_b, &mut this.table),
-                EQU => equal(&var_a, &var_b, name_a, name_b, &mut this.table),
-                NEQU => not_equal(&var_a, &var_b, name_a, name_b, &mut this.table),
-                XOR => exclusif_or(&var_a, &var_b, name_a, name_b, &mut this.table),
-                BAND => bit_and(&var_a, &var_b, name_a, name_b, &mut this.table),
-                BOR => bit_or(&var_a, &var_b, name_a, name_b, &mut this.table),
-                AND => and(&var_a, &var_b, name_a, name_b, &mut this.table),
-                OR => or(&var_a, &var_b, name_a, name_b, &mut this.table),
-                GRE => greater(&var_a, &var_b, name_a, name_b, &mut this.table),
-                LES => less(&var_a, &var_b, name_a, name_b, &mut this.table),
-                EGRE => greater_equal(&var_a, &var_b, name_a, name_b, &mut this.table),
-                ELES => less_equal(&var_a, &var_b, name_a, name_b, &mut this.table),
-                _ => break,
+                Intruction::ADD => {
+                    addition(&vars[0], &vars[1], &names[0], &names[1], &mut this.table)
+                }
+                Intruction::SUB => {
+                    substraction(&vars[0], &vars[1], &names[0], &names[1], &mut this.table)
+                }
+                Intruction::MUL => {
+                    multiplication(&vars[0], &vars[1], &names[0], &names[1], &mut this.table)
+                }
+                Intruction::DIV => {
+                    division(&vars[0], &vars[1], &names[0], &names[1], &mut this.table)
+                }
+                Intruction::MOD => {
+                    modulo(&vars[0], &vars[1], &names[0], &names[1], &mut this.table)
+                }
+                Intruction::POW => power(&vars[0], &vars[1], &names[0], &names[1], &mut this.table),
+                Intruction::EQU => equal(&vars[0], &vars[1], &names[0], &names[1], &mut this.table),
+                Intruction::NEQU => {
+                    not_equal(&vars[0], &vars[1], &names[0], &names[1], &mut this.table)
+                }
+                Intruction::XOR => {
+                    exclusif_or(&vars[0], &vars[1], &names[0], &names[1], &mut this.table)
+                }
+                Intruction::BAND => {
+                    bit_and(&vars[0], &vars[1], &names[0], &names[1], &mut this.table)
+                }
+                Intruction::BOR => {
+                    bit_or(&vars[0], &vars[1], &names[0], &names[1], &mut this.table)
+                }
+                Intruction::AND => and(&vars[0], &vars[1], &names[0], &names[1], &mut this.table),
+                Intruction::OR => or(&vars[0], &vars[1], &names[0], &names[1], &mut this.table),
+                Intruction::GRE => {
+                    greater(&vars[0], &vars[1], &names[0], &names[1], &mut this.table)
+                }
+                Intruction::LES => less(&vars[0], &vars[1], &names[0], &names[1], &mut this.table),
+                Intruction::EGRE => {
+                    greater_equal(&vars[0], &vars[1], &names[0], &names[1], &mut this.table)
+                }
+                Intruction::ELES => {
+                    less_equal(&vars[0], &vars[1], &names[0], &names[1], &mut this.table)
+                }
             }
         }
 
@@ -358,7 +391,7 @@ fn convert(
     mut table: Table,
     entry_list: &mut Vec<String>,
     operator_order: &mut [Vec<usize>; LEVELS_OF_PRIORITY as usize],
-) -> Vec<(usize, (String, String))> {
+) -> Vec<(Intruction, Vec<String>)> {
     let mut name_a = String::from("°");
     let mut name_b = String::from("°");
 
@@ -369,7 +402,7 @@ fn convert(
     let mut operator_priority = 0;
     let mut operator_position;
 
-    let mut operations: Vec<(usize, (String, String))> = Vec::new();
+    let mut operations: Vec<(Intruction, Vec<String>)> = Vec::new();
 
     while operator_priority < LEVELS_OF_PRIORITY {
         while operator_priority < LEVELS_OF_PRIORITY
@@ -396,78 +429,46 @@ fn convert(
 
             delete = (false, true);
 
-            match operator_priority {
-                P_NOT => {
-                    match operator {
-                        "!" => operations.push((NOT, (name_a, name_b))),
-                        _ => {}
-                    }
-
+            match operator {
+                "!" => {
+                    operations.push((Intruction::NOT, vec![name_a, name_b]));
                     delete = (false, false);
                 }
-                P_POW => match operator {
-                    "**" => operations.push((POW, (name_a, name_b))),
-                    _ => {}
-                },
-                P_MULT_DIV_MOD => match operator {
-                    "*" => operations.push((MUL, (name_a, name_b))),
-                    "/" => operations.push((DIV, (name_a, name_b))),
-                    "%" => operations.push((MOD, (name_a, name_b))),
-                    _ => {}
-                },
-                P_ADD_SUB => match operator {
-                    "+" => operations.push((ADD, (name_a, name_b))),
-                    "-" => operations.push((SUB, (name_a, name_b))),
-                    _ => {}
-                },
-                P_BIT_AND => match operator {
-                    "&" => operations.push((BAND, (name_a, name_b))),
-                    _ => {}
-                },
-                P_EXLUSIF_OR => match operator {
-                    "^" => operations.push((XOR, (name_a, name_b))),
-                    _ => {}
-                },
-                P_BIT_OR => match operator {
-                    "|" => operations.push((BOR, (name_a, name_b))),
-                    _ => {}
-                },
-                P_COMPARAISON => match operator {
-                    "==" => operations.push((EQU, (name_a, name_b))),
-                    "!=" => operations.push((NEQU, (name_a, name_b))),
-                    ">=" => operations.push((EGRE, (name_a, name_b))),
-                    "<=" => operations.push((ELES, (name_a, name_b))),
-                    ">" => operations.push((GRE, (name_a, name_b))),
-                    "<" => operations.push((LES, (name_a, name_b))),
-                    _ => {}
-                },
-                P_AND => match operator {
-                    "&&" => operations.push((AND, (name_a, name_b))),
-                    _ => {}
-                },
-                P_OR => match operator {
-                    "||" => operations.push((OR, (name_a, name_b))),
-                    _ => {}
-                },
-                P_ASSIGNEMENT => {
+                "**" => operations.push((Intruction::POW, vec![name_a, name_b])),
+                "*" => operations.push((Intruction::MUL, vec![name_a, name_b])),
+                "/" => operations.push((Intruction::DIV, vec![name_a, name_b])),
+                "%" => operations.push((Intruction::MOD, vec![name_a, name_b])),
+                "+" => operations.push((Intruction::ADD, vec![name_a, name_b])),
+                "-" => operations.push((Intruction::SUB, vec![name_a, name_b])),
+                "&" => operations.push((Intruction::BAND, vec![name_a, name_b])),
+                "^" => operations.push((Intruction::XOR, vec![name_a, name_b])),
+                "|" => operations.push((Intruction::BOR, vec![name_a, name_b])),
+                "==" => operations.push((Intruction::EQU, vec![name_a, name_b])),
+                "!=" => operations.push((Intruction::NEQU, vec![name_a, name_b])),
+                ">=" => operations.push((Intruction::EGRE, vec![name_a, name_b])),
+                "<=" => operations.push((Intruction::ELES, vec![name_a, name_b])),
+                ">" => operations.push((Intruction::GRE, vec![name_a, name_b])),
+                "<" => operations.push((Intruction::LES, vec![name_a, name_b])),
+                "&&" => operations.push((Intruction::AND, vec![name_a, name_b])),
+                "||" => operations.push((Intruction::OR, vec![name_a, name_b])),
+                "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "**=" | "&=" | "^=" | "|=" => {
                     let name_a_buf = get_real_name(&name_a).to_string();
                     let name_b_buf = name_b.to_string();
 
                     match operator {
-                        "=" => {}
-                        "+=" => operations.push((ADD, (name_a, name_b))),
-                        "-=" => operations.push((SUB, (name_a, name_b))),
-                        "*=" => operations.push((MUL, (name_a, name_b))),
-                        "/=" => operations.push((DIV, (name_a, name_b))),
-                        "%=" => operations.push((MOD, (name_a, name_b))),
-                        "**=" => operations.push((POW, (name_a, name_b))),
-                        "&=" => operations.push((BAND, (name_a, name_b))),
-                        "^=" => operations.push((XOR, (name_a, name_b))),
-                        "|=" => operations.push((BOR, (name_a, name_b))),
+                        "+=" => operations.push((Intruction::ADD, vec![name_a, name_b])),
+                        "-=" => operations.push((Intruction::SUB, vec![name_a, name_b])),
+                        "*=" => operations.push((Intruction::MUL, vec![name_a, name_b])),
+                        "/=" => operations.push((Intruction::DIV, vec![name_a, name_b])),
+                        "%=" => operations.push((Intruction::MOD, vec![name_a, name_b])),
+                        "**=" => operations.push((Intruction::POW, vec![name_a, name_b])),
+                        "&=" => operations.push((Intruction::BAND, vec![name_a, name_b])),
+                        "^=" => operations.push((Intruction::XOR, vec![name_a, name_b])),
+                        "|=" => operations.push((Intruction::BOR, vec![name_a, name_b])),
                         _ => {}
                     }
 
-                    operations.push((ASG, (name_a_buf, name_b_buf)))
+                    operations.push((Intruction::ASG, vec![name_a_buf, name_b_buf]))
                 }
                 _ => break,
             }
