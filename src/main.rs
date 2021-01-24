@@ -11,11 +11,8 @@ mod variable;
 mod vec_free;
 mod vec_table;
 
-//use kind::*;
 use operation::*;
 use process_line::*;
-//use table::*;
-//use variable::*;
 use vec_table::*;
 
 #[macro_export]

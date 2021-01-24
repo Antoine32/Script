@@ -97,35 +97,6 @@ pub fn get_operator_num(value: &str) -> Result<usize, ()> {
     Err(())
 }
 
-/*pub fn find_operator(string: &str) -> Result<(usize, usize), ()> {
-    let mut position = string.len() + 1;
-    let mut operator = "";
-    //let mut priority = LEVELS_OF_PRIORITY;
-
-    for i in 0..(OPERATORS.len()) {
-        let opt = OPERATORS[i];
-        let pri = PRIORITY[i];
-
-        //if pri < priority {
-        for (pos, _) in string.match_indices(opt) {
-            if pos < position && (pos > 0 || pri == P_NOT) {
-                position = pos;
-                operator = opt;
-                //priority = pri;
-            }
-        }
-        //}
-    }
-
-    eprintln!("");
-
-    if position < string.len() {
-        Ok((position, position + operator.len()))
-    } else {
-        Err(())
-    }
-}*/
-
 pub fn assign(
     var_b: &Variable,
     name_a: &str,
