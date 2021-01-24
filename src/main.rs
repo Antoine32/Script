@@ -141,7 +141,7 @@ pub fn process_text(content: &str) -> Vec<ProcessLine> {
             #[allow(unused_variables)]
             let (processed_line, to_print) = ProcessLine::new(line);
             process_lines.push(processed_line);
-            eprintln!(to_print);
+            eprintln!("{}", to_print);
         }
     }
 
@@ -150,7 +150,7 @@ pub fn process_text(content: &str) -> Vec<ProcessLine> {
         #[allow(unused_variables)]
         let (processed_line, to_print) = receivers[i].recv().unwrap();
         process_lines.push(processed_line);
-        eprintln!(to_print);
+        eprintln!("{}", to_print);
     }
 
     return process_lines;
