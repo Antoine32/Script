@@ -206,7 +206,7 @@ impl ProcessLine {
             let var = self.table.get(name);
 
             eprint!(
-                "|{}\t: {}\t: |{}||\t",
+                "|{}: {}: |{}||\t",
                 name,
                 var.kind,
                 var.get_string(&name, &self.table).unwrap()
