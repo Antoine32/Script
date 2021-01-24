@@ -26,7 +26,7 @@ impl VecTable {
                     "\t: {}\t: {}\t: |{}|",
                     name,
                     var.kind,
-                    var.get_string(&self.tables[i]).unwrap()
+                    var.get_string(name, &self.tables[i]).unwrap()
                 );
             }
         }

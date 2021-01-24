@@ -1,7 +1,11 @@
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
+use std::sync::mpsc::sync_channel;
+use std::thread;
 use std::time::{Duration, Instant};
+
+// cargo run --release --features "print"
 
 mod kind;
 mod operation;
@@ -18,7 +22,7 @@ use vec_table::*;
 #[macro_export]
 macro_rules! eprint {
     ($($rest:tt)*) => {
-        #[cfg(debug_assertions)]
+        #[cfg(feature = "print")]
         std::eprint!($($rest)*)
     }
 }
@@ -26,7 +30,7 @@ macro_rules! eprint {
 #[macro_export]
 macro_rules! eprintln {
     ($($rest:tt)*) => {
-        #[cfg(debug_assertions)]
+        #[cfg(feature = "print")]
         std::eprintln!($($rest)*)
     }
 }
@@ -103,16 +107,31 @@ pub fn decode_string(string: &str) -> String {
 
 pub fn process_text(content: &str) -> Vec<ProcessLine> {
     let mut process_lines: Vec<ProcessLine> = Vec::new();
+    //let mut receivers: Vec<std::sync::mpsc::Receiver<ProcessLine>> = Vec::new();
 
     let lines: Vec<&str> = content
         .split_terminator(|c: char| c == '\n' || c == ';')
-        .filter(|c| c.len() > 0)
+        //.filter(|c| c.len() > 0)
         .collect();
 
     for i in 0..(lines.len()) {
         eprint!("\n{}: ", i);
-        process_lines.push(ProcessLine::new(lines[i].to_string()));
+
+        let line = lines[i].to_string();
+
+        /*let (sender, receiver_ext) = sync_channel(2);
+        receivers.push(receiver_ext);
+
+        thread::spawn(move || {
+            sender.send(ProcessLine::new(line)).unwrap();
+        });*/
+
+        process_lines.push(ProcessLine::new(line));
     }
+
+    /*for i in 0..(receivers.len()) {
+        process_lines.push(receivers[i].recv().unwrap());
+    }*/
 
     return process_lines;
 }

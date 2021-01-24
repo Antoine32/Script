@@ -40,7 +40,7 @@ impl Table {
                 "{}\t: {}\t: |{}|",
                 name,
                 var.kind,
-                var.get_string(self).unwrap()
+                var.get_string(name, self).unwrap()
             );
         }
     }
@@ -53,6 +53,7 @@ impl Table {
             Kind::Bool => self.set_bool(entry, raw_value.parse::<bool>().unwrap()),
             Kind::Operator => self.set_operator(entry, get_operator_num(raw_value).unwrap()),
             Kind::Null => self.set_null(entry),
+            Kind::Function => self.set_function(entry, raw_value.parse::<usize>().unwrap()), // to change
         }
     }
 
@@ -138,6 +139,18 @@ impl Table {
 
     pub fn set_null(&mut self, entry: &str) {
         self.remove_entry(entry);
+    }
+
+    pub fn set_function(&mut self, entry: &str, value: usize) {
+        match self.get_mut(&entry) {
+            Ok(var) => {
+                var.set(Kind::Function, value);
+            }
+            Err(_) => {
+                let var = Variable::new_function(value);
+                self.variables.insert(entry.to_string(), var);
+            }
+        }
     }
 
     pub fn clear_kind(&mut self, kind: Kind) {

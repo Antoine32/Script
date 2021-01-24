@@ -7,6 +7,7 @@ pub enum Kind {
     Bool,
     Operator,
     Null,
+    Function,
 }
 
 impl std::fmt::Display for Kind {
@@ -18,6 +19,7 @@ impl std::fmt::Display for Kind {
             Kind::Bool => write!(f, "bool"),
             Kind::Operator => write!(f, "operator"),
             Kind::Null => write!(f, "null"),
+            Kind::Function => write!(f, "function"),
         }
     }
 }
@@ -31,6 +33,7 @@ impl std::cmp::PartialEq for Kind {
             Kind::Bool => matches!(other, Kind::Bool),
             Kind::Operator => matches!(other, Kind::Operator),
             Kind::Null => matches!(other, Kind::Null),
+            Kind::Function => matches!(other, Kind::Function),
         }
     }
 }
@@ -44,6 +47,7 @@ impl Clone for Kind {
             Kind::Bool => Kind::Bool,
             Kind::Operator => Kind::Operator,
             Kind::Null => Kind::Null,
+            Kind::Function => Kind::Function,
         }
     }
 }
