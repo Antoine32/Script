@@ -181,10 +181,25 @@ impl Table {
         }
     }
 
-    pub fn clear_null(&mut self) {
-        for var in self.vec_null.retrieve_all().iter() {
-            self.remove_entry(var);
+    pub fn clear_kind(&mut self, kind: Kind) {
+        let v = self.variables.clone();
+
+        for (name, var) in v.iter() {
+            if var.kind == kind {
+                self.remove_entry(name);
+            }
         }
+    }
+
+    pub fn clear_null(&mut self) {
+        /*for var in self.vec_null.retrieve_all().iter() {
+            self.remove_entry(var);
+        }*/
+        self.clear_kind(Kind::Null);
+    }
+
+    pub fn clear_operator(&mut self) {
+        self.clear_kind(Kind::Operator);
     }
 
     pub fn contains(&self, entry: &str) -> bool {
