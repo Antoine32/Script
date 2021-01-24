@@ -45,39 +45,6 @@ impl Table {
         }
     }
 
-    /*pub fn set_any_from_file(&mut self, entry: &str, raw_value: &str) -> String {
-        match get_operator_num(&raw_value) {
-            Ok(value) => self.set_operator(entry, value),
-            //
-            Err(_) => match raw_value.parse::<f64>() {
-                Ok(value) => self.set_number(entry, value),
-                //
-                Err(_) => match raw_value.parse::<bool>() {
-                    Ok(value) => self.set_bool(entry, value),
-                    //
-                    Err(_) => {
-                        if raw_value.get(..1).unwrap() == "\""
-                            && raw_value.get((raw_value.len() - 1)..).unwrap() == "\""
-                        {
-                            match raw_value.parse::<String>() {
-                                Ok(value) => self.set_string(entry, self.decode_string(&value)),
-                                Err(_) => {
-                                    return raw_value.to_string();
-                                }
-                            }
-                        } else {
-                            let name = format!("{}{}", raw_value, entry);
-                            self.set_null(&name);
-                            return name;
-                        }
-                    }
-                },
-            },
-        }
-
-        return entry.to_string();
-    }*/
-
     pub fn set_from_file(&mut self, entry: &str, raw_value: &str, kind: Kind) {
         match kind {
             Kind::String => self.set_string(entry, decode_string(raw_value)),

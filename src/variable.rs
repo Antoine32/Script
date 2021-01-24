@@ -1,5 +1,5 @@
 use crate::{kind::*, table::*, OPERATORS};
-use num::{BigInt, FromPrimitive, One, Zero};
+use num::{BigInt, FromPrimitive, One, ToPrimitive, Zero};
 
 pub struct Variable {
     pub kind: Kind,
@@ -65,7 +65,7 @@ impl Variable {
     pub fn get_number(&self, entry: &str, table: &Table) -> Result<f64, String> {
         match self.kind {
             Kind::Number => Ok(table.get_number(self.pos)),
-            //Kind::BigInt => Ok(table.get_bigint(self.pos)),
+            Kind::BigInt => Ok(table.get_bigint(self.pos).to_f64().unwrap()),
             Kind::Bool => Ok({
                 if table.get_bool(self.pos) {
                     1.0
