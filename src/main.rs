@@ -114,7 +114,7 @@ pub fn process_text(content: &str) -> Vec<ProcessLine> {
     let mut process_lines: Vec<ProcessLine> = Vec::new();
 
     #[cfg(feature = "multithread")]
-    let mut receivers: Vec<std::sync::mpsc::Receiver<ProcessLine>> = Vec::new();
+    let mut receivers: Vec<std::sync::mpsc::Receiver<(ProcessLine, String)>> = Vec::new();
 
     let lines: Vec<&str> = content
         .split_terminator(|c: char| c == '\n' || c == ';')
@@ -138,6 +138,7 @@ pub fn process_text(content: &str) -> Vec<ProcessLine> {
 
         #[cfg(not(feature = "multithread"))]
         {
+            #[allow(unused_variables)]
             let (processed_line, to_print) = ProcessLine::new(line);
             process_lines.push(processed_line);
             eprintln!(to_print);
@@ -146,7 +147,10 @@ pub fn process_text(content: &str) -> Vec<ProcessLine> {
 
     #[cfg(feature = "multithread")]
     for i in 0..(receivers.len()) {
-        process_lines.push(receivers[i].recv().unwrap());
+        #[allow(unused_variables)]
+        let (processed_line, to_print) = receivers[i].recv().unwrap();
+        process_lines.push(processed_line);
+        eprintln!(to_print);
     }
 
     return process_lines;
@@ -191,7 +195,9 @@ fn main() {
 
         eprintln!("\n---------------------------------------------------------------------\n");
 
+        #[cfg(feature = "print")]
         vec_table.print_tables();
+
         eprintln!("\n---------------------------------------------------------------------\n");
     }
 

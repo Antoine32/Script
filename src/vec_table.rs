@@ -17,6 +17,7 @@ impl VecTable {
     }
 
     // debug feature
+    #[cfg(feature = "print")]
     pub fn print_tables(&self) {
         eprintln!("{}\t: {}\t: {}\t: {}", "table", "name", "kind", "value");
 

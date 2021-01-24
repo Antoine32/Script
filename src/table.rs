@@ -34,6 +34,7 @@ impl Table {
     }
 
     // debug feature
+    #[cfg(feature = "print")]
     pub fn print_variables(&self) {
         eprintln!("\n{}\t: {}\t: {}\n", "name", "kind", "value");
 
