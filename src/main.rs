@@ -5,8 +5,6 @@ use std::sync::mpsc::sync_channel;
 use std::thread;
 use std::time::{Duration, Instant};
 
-// cargo run --release --features "print"
-
 mod kind;
 mod operation;
 mod process_line;
@@ -18,6 +16,12 @@ mod vec_table;
 use operation::*;
 use process_line::*;
 use vec_table::*;
+
+/*
+   To print debug info use
+   cargo run --features "print"
+   with or without --release
+*/
 
 #[macro_export]
 macro_rules! eprint {
