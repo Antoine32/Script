@@ -13,7 +13,6 @@ pub struct Table {
     vec_number: VecFree<f64>,
     vec_bigint: VecFree<BigInt>,
     vec_bool: VecFree<bool>,
-    vec_null: VecFree<String>,
     //
     null: Variable,
 }
@@ -27,7 +26,6 @@ impl Table {
             vec_number: VecFree::new(),
             vec_bigint: VecFree::new(),
             vec_bool: VecFree::new(),
-            vec_null: VecFree::new(),
             //
             null: Variable::new_null(0),
         }
@@ -159,16 +157,6 @@ impl Table {
         }
     }
 
-    pub fn set_null(&mut self, entry: &str) {
-        let pos_a = self.vec_null.add(entry.to_string());
-        let pos_b = self.set(entry, pos_a, Kind::Null);
-
-        if pos_a != pos_b {
-            self.vec_null.remove(pos_a);
-            self.vec_null[pos_b] = entry.to_string();
-        }
-    }
-
     pub fn set_operator(&mut self, entry: &str, value: usize) {
         match self.get_mut(&entry) {
             Ok(var) => {
@@ -179,6 +167,10 @@ impl Table {
                 self.variables.insert(entry.to_string(), var);
             }
         }
+    }
+
+    pub fn set_null(&mut self, entry: &str) {
+        self.remove_entry(entry);
     }
 
     pub fn clear_kind(&mut self, kind: Kind) {
@@ -192,9 +184,6 @@ impl Table {
     }
 
     pub fn clear_null(&mut self) {
-        /*for var in self.vec_null.retrieve_all().iter() {
-            self.remove_entry(var);
-        }*/
         self.clear_kind(Kind::Null);
     }
 
@@ -276,9 +265,6 @@ impl Table {
             Kind::Bool => {
                 self.vec_bool.remove(pos);
             }
-            Kind::Null => {
-                self.vec_null.remove(pos);
-            }
             _ => {}
         }
     }
@@ -299,7 +285,6 @@ impl Clone for Table {
             vec_number: self.vec_number.clone(),
             vec_bigint: self.vec_bigint.clone(),
             vec_bool: self.vec_bool.clone(),
-            vec_null: self.vec_null.clone(),
             //
             null: Variable::new_null(0),
         }
