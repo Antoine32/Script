@@ -1,7 +1,9 @@
-use crate::eprintln;
 use crate::table::*;
 use crate::variable::*;
 use num::BigInt;
+
+#[allow(unused_imports)]
+use crate::{eprint, eprintln};
 
 pub struct VecTable {
     tables: Vec<Table>,

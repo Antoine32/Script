@@ -1,6 +1,9 @@
 use crate::{kind::*, table::*, OPERATORS};
 use num::{BigInt, FromPrimitive, One, ToPrimitive, Zero};
 
+#[allow(unused_imports)]
+use crate::{eprint, eprintln};
+
 pub struct Variable {
     pub kind: Kind,
     pub pos: usize,

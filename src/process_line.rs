@@ -2,6 +2,8 @@ use crate::kind::*;
 use crate::operation::*;
 use crate::table::*;
 use crate::vec_table::*;
+
+#[allow(unused_imports)]
 use crate::{eprint, eprintln};
 
 pub struct ProcessLine {
@@ -12,9 +14,14 @@ pub struct ProcessLine {
 }
 
 impl ProcessLine {
-    pub fn new(mut line: String) -> Self {
+    pub fn new(mut line: String) -> (Self, String) {
         line = line.trim_end().to_string();
-        eprintln!("{} \t|{}|", line.len(), line);
+
+        #[cfg(feature = "print")]
+        let mut to_print_vec: Vec<String> = Vec::new();
+
+        #[cfg(feature = "print")]
+        to_print_vec.push(format!("{} \t|{}|\n", line.len(), line));
 
         fn add_variable(
             table: &mut Table,
@@ -23,13 +30,13 @@ impl ProcessLine {
             entry_list: &mut Vec<String>,
             imported: &mut Vec<(String, String)>,
             operator_order: &mut [Vec<usize>; LEVELS_OF_PRIORITY as usize],
-            to_print: &mut Vec<String>,
             raw_value: &str,
             kind: Kind,
-        ) {
-            if raw_value != " " {
-                to_print.push(format!("|{}|, {}, {}", raw_value, kind, raw_value.len()));
+        ) -> String {
+            *last_kind = kind;
+            *last_raw_value = raw_value.to_string();
 
+            if raw_value != " " {
                 let i = entry_list.len();
 
                 let name = format!(
@@ -57,10 +64,12 @@ impl ProcessLine {
                 }
 
                 entry_list.push(name);
+
+                #[cfg(feature = "print")]
+                return format!("|{}|, {}, {}", raw_value, kind, raw_value.len());
             }
 
-            *last_kind = kind;
-            *last_raw_value = raw_value.to_string();
+            return String::new();
         }
 
         let mut level = 0;
@@ -82,8 +91,6 @@ impl ProcessLine {
         let mut last_kind: Kind = Kind::Operator;
         let mut last_raw_value: String = String::new();
 
-        let mut to_print: Vec<String> = Vec::new();
-
         while n < line_char.len() {
             c = line_char[n];
 
@@ -103,66 +110,76 @@ impl ProcessLine {
                     if last_raw_value.as_str() == "+" {
                         operator_order[P_ADD_SUB as usize].pop();
                         entry_list.pop();
-                        to_print.pop();
 
-                        add_variable(
+                        #[cfg(feature = "print")]
+                        to_print_vec.pop();
+
+                        #[allow(unused_variables)]
+                        let buf = add_variable(
                             &mut table,
                             &mut last_kind,
                             &mut last_raw_value,
                             &mut entry_list,
                             &mut imported,
                             &mut operator_order,
-                            &mut to_print,
                             &raw_value,
                             kind,
                         );
+
+                        #[cfg(feature = "print")]
+                        to_print_vec.push(buf);
                     } else {
-                        add_variable(
+                        #[allow(unused_variables)]
+                        let buf = add_variable(
                             &mut table,
                             &mut last_kind,
                             &mut last_raw_value,
                             &mut entry_list,
                             &mut imported,
                             &mut operator_order,
-                            &mut to_print,
                             "-1",
                             Kind::Number,
                         );
 
-                        add_variable(
+                        #[cfg(feature = "print")]
+                        to_print_vec.push(buf);
+
+                        #[allow(unused_variables)]
+                        let buf = add_variable(
                             &mut table,
                             &mut last_kind,
                             &mut last_raw_value,
                             &mut entry_list,
                             &mut imported,
                             &mut operator_order,
-                            &mut to_print,
                             "*",
                             Kind::Operator,
                         );
+
+                        #[cfg(feature = "print")]
+                        to_print_vec.push(buf);
                     }
                 } else {
-                    add_variable(
+                    #[allow(unused_variables)]
+                    let buf = add_variable(
                         &mut table,
                         &mut last_kind,
                         &mut last_raw_value,
                         &mut entry_list,
                         &mut imported,
                         &mut operator_order,
-                        &mut to_print,
                         &raw_value,
                         kind,
                     );
+
+                    #[cfg(feature = "print")]
+                    to_print_vec.push(buf);
                 }
 
                 n += raw_value.len();
             } else {
                 n += 1;
             }
-        }
-
-        for p in to_print.iter() {
-            eprintln!("{}", p);
         }
 
         let mut count = vec![0; entry_list.len()];
@@ -192,14 +209,26 @@ impl ProcessLine {
         table.clear_null();
         table.clear_operator();
 
-        ProcessLine {
-            level: level,
-            table: table,
-            imported: imported,
-            operations: operations,
+        #[allow(unused_mut)]
+        let mut to_print = String::new();
+
+        #[cfg(feature = "print")]
+        for p in to_print_vec.iter() {
+            to_print.push_str(p);
         }
+
+        (
+            ProcessLine {
+                level: level,
+                table: table,
+                imported: imported,
+                operations: operations,
+            },
+            to_print,
+        )
     }
 
+    #[cfg(feature = "print")]
     fn print_var(&self, name: &str) {
         if name != "°" {
             let var = self.table.get(name);
@@ -213,6 +242,7 @@ impl ProcessLine {
         }
     }
 
+    #[cfg(feature = "print")]
     pub fn print_line(&self, n: usize) {
         let (instuction, (var_a, var_b)) = &self.operations[n];
 
@@ -252,7 +282,9 @@ impl ProcessLine {
             }
         }
 
+        #[cfg(feature = "print")]
         let mut i = 0;
+
         eprintln!("level: {}", self.level);
         eprintln!("\n{}\t: {}\t: {}\n", "name", "kind", "value");
 
@@ -260,8 +292,11 @@ impl ProcessLine {
             let var_a = this.table.get(name_a).clone();
             let var_b = this.table.get(name_b).clone();
 
-            this.print_line(i);
-            i += 1;
+            #[cfg(feature = "print")]
+            {
+                this.print_line(i);
+                i += 1;
+            }
 
             match *instruction {
                 ASG => {

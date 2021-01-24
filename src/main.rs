@@ -1,9 +1,10 @@
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
-use std::sync::mpsc::sync_channel;
-use std::thread;
 use std::time::{Duration, Instant};
+
+#[cfg(feature = "multithread")]
+use std::{sync::mpsc::sync_channel, thread};
 
 mod kind;
 mod operation;
@@ -111,7 +112,9 @@ pub fn decode_string(string: &str) -> String {
 
 pub fn process_text(content: &str) -> Vec<ProcessLine> {
     let mut process_lines: Vec<ProcessLine> = Vec::new();
-    //let mut receivers: Vec<std::sync::mpsc::Receiver<ProcessLine>> = Vec::new();
+
+    #[cfg(feature = "multithread")]
+    let mut receivers: Vec<std::sync::mpsc::Receiver<ProcessLine>> = Vec::new();
 
     let lines: Vec<&str> = content
         .split_terminator(|c: char| c == '\n' || c == ';')
@@ -123,19 +126,28 @@ pub fn process_text(content: &str) -> Vec<ProcessLine> {
 
         let line = lines[i].to_string();
 
-        /*let (sender, receiver_ext) = sync_channel(2);
-        receivers.push(receiver_ext);
+        #[cfg(feature = "multithread")]
+        {
+            let (sender, receiver_ext) = sync_channel(2);
+            receivers.push(receiver_ext);
 
-        thread::spawn(move || {
-            sender.send(ProcessLine::new(line)).unwrap();
-        });*/
+            thread::spawn(move || {
+                sender.send(ProcessLine::new(line)).unwrap();
+            });
+        }
 
-        process_lines.push(ProcessLine::new(line));
+        #[cfg(not(feature = "multithread"))]
+        {
+            let (processed_line, to_print) = ProcessLine::new(line);
+            process_lines.push(processed_line);
+            eprintln!(to_print);
+        }
     }
 
-    /*for i in 0..(receivers.len()) {
+    #[cfg(feature = "multithread")]
+    for i in 0..(receivers.len()) {
         process_lines.push(receivers[i].recv().unwrap());
-    }*/
+    }
 
     return process_lines;
 }

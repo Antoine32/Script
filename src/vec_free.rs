@@ -1,6 +1,9 @@
 use crate::quicksort;
 use std::ops::{Index, IndexMut};
 
+#[allow(unused_imports)]
+use crate::{eprint, eprintln};
+
 pub struct VecFree<T: Clone> {
     vec_val: Vec<T>,
     free_val: Vec<usize>,

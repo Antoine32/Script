@@ -1,10 +1,12 @@
-use crate::eprintln;
 use crate::kind::*;
 use crate::variable::*;
 use crate::vec_free::*;
 use crate::{decode_string, get_operator_num};
 use num::BigInt;
 use std::collections::HashMap;
+
+#[allow(unused_imports)]
+use crate::{eprint, eprintln};
 
 pub struct Table {
     pub variables: HashMap<String, Variable>,

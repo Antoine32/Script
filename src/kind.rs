@@ -1,5 +1,8 @@
 use crate::OPERATORS;
 
+#[allow(unused_imports)]
+use crate::{eprint, eprintln};
+
 pub enum Kind {
     String,
     Number,

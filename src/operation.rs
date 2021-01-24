@@ -1,9 +1,11 @@
-use crate::eprintln;
 use crate::kind::*;
 use crate::table::*;
 use crate::variable::*;
 use crate::vec_table::*;
 use num::{BigInt, One, Signed, Zero};
+
+#[allow(unused_imports)]
+use crate::{eprint, eprintln};
 
 // Operator
 pub const OPERATORS: [&str; 28] = [
@@ -373,7 +375,7 @@ fn local_some_equal(
             Ok(num) => num_a = num,
             Err(e) => {
                 equality = false;
-                eprintln!("{}", e)
+                println!("{}", e)
             }
         }
     }
@@ -383,7 +385,7 @@ fn local_some_equal(
             Ok(num) => num_b = num,
             Err(e) => {
                 equality = false;
-                eprintln!("{}", e)
+                println!("{}", e)
             }
         }
     }
