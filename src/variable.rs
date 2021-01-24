@@ -50,7 +50,7 @@ impl Variable {
         )
     }
 
-    pub fn get_string(&self, entry: &str, table: &Table) -> Result<String, String> {
+    pub fn get_string(&self, table: &Table) -> Result<String, String> {
         match self.kind {
             Kind::String => Ok(table.get_string(self.pos).to_string()),
             Kind::Number => Ok(table.get_number(self.pos).to_string()),
@@ -58,7 +58,7 @@ impl Variable {
             Kind::Bool => Ok(table.get_bool(self.pos).to_string()),
             Kind::Operator => Ok(OPERATORS[self.pos].to_string()),
             Kind::Null => Ok("null".to_string()),
-            _ => Err(self.get_err(entry, Kind::String)), // here in case I need it later and for consistency
+            //_ => Err(self.get_err(entry, Kind::String)), // here in case I need it later and for consistency
         }
     }
 

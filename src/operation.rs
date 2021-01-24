@@ -1,5 +1,4 @@
 use crate::eprintln;
-use crate::get_real_name;
 use crate::kind::*;
 use crate::table::*;
 use crate::variable::*;
@@ -134,7 +133,7 @@ pub fn assign(
     vec_table: &mut VecTable,
 ) {
     match var_b.kind {
-        Kind::String => vec_table.set_string(name_a, var_b.get_string(name_b, table).unwrap()),
+        Kind::String => vec_table.set_string(name_a, var_b.get_string(table).unwrap()),
         Kind::Number => vec_table.set_number(name_a, var_b.get_number(name_b, table).unwrap()),
         Kind::BigInt => vec_table.set_bigint(name_a, var_b.get_bigint(name_b, table).unwrap()),
         Kind::Bool => vec_table.set_bool(name_a, var_b.get_bool(name_b, table).unwrap()),
@@ -149,8 +148,8 @@ pub fn addition(var_a: &Variable, var_b: &Variable, name_a: &str, name_b: &str, 
             name_a,
             format!(
                 "{}{}",
-                var_a.get_string(name_a, table).unwrap(),
-                var_b.get_string(name_b, table).unwrap()
+                var_a.get_string(table).unwrap(),
+                var_b.get_string(table).unwrap()
             ),
         )
     } else if var_a.kind == Kind::BigInt || var_b.kind == Kind::BigInt {
@@ -349,9 +348,7 @@ fn local_equal(
 
     if equality {
         equality = match var_a.kind {
-            Kind::String => {
-                var_a.get_string(name_a, table).unwrap() == var_b.get_string(name_b, table).unwrap()
-            }
+            Kind::String => var_a.get_string(table).unwrap() == var_b.get_string(table).unwrap(),
             Kind::Number => {
                 var_a.get_number(name_a, table).unwrap() == var_b.get_number(name_b, table).unwrap()
             }

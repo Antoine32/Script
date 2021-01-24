@@ -41,7 +41,7 @@ impl<T: Clone> VecFree<T> {
         }
     }
 
-    pub fn retrieve_all(&self) -> Vec<T> {
+    /*pub fn retrieve_all(&self) -> Vec<T> {
         let mut v = self.vec_val.clone();
         let mut count = 0;
 
@@ -57,7 +57,7 @@ impl<T: Clone> VecFree<T> {
         }
 
         v
-    }
+    }*/
 }
 
 impl<T: Clone> Index<usize> for VecFree<T> {

@@ -1,7 +1,6 @@
 use crate::kind::*;
 use crate::operation::*;
 use crate::table::*;
-use crate::variable::*;
 use crate::vec_table::*;
 use crate::{eprint, eprintln};
 
@@ -209,7 +208,7 @@ impl ProcessLine {
                 "|{}: {}: |{}||\t",
                 name,
                 var.kind,
-                var.get_string(&name, &self.table).unwrap()
+                var.get_string(&self.table).unwrap()
             );
         }
     }
@@ -233,10 +232,9 @@ impl ProcessLine {
             let (var, level) = vec_table.get(name);
 
             match var.kind {
-                Kind::String => this.table.set_string(
-                    entry,
-                    var.get_string(name, vec_table.get_level(level)).unwrap(),
-                ),
+                Kind::String => this
+                    .table
+                    .set_string(entry, var.get_string(vec_table.get_level(level)).unwrap()),
                 Kind::Number => this.table.set_number(
                     entry,
                     var.get_number(name, vec_table.get_level(level)).unwrap(),
@@ -313,7 +311,7 @@ fn remove(table: &mut Table, entry_list: &mut Vec<String>, pos: usize) {
     table.remove_entry(&name);
 }
 
-pub fn get_real_name(name: &str) -> &str {
+fn get_real_name(name: &str) -> &str {
     match name.rfind('°') {
         Some(n) => name.get(0..n).unwrap(),
         None => name,

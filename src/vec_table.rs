@@ -21,12 +21,12 @@ impl VecTable {
         for i in 0..(self.tables.len()) {
             eprintln!("\n#{}", i);
 
-            for l in self.tables[i].variables.iter() {
+            for (name, var) in self.tables[i].variables.iter() {
                 eprintln!(
                     "\t: {}\t: {}\t: |{}|",
-                    l.0,
-                    l.1.kind,
-                    l.1.get_string(l.0, &self.tables[i]).unwrap()
+                    name,
+                    var.kind,
+                    var.get_string(&self.tables[i]).unwrap()
                 );
             }
         }

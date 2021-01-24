@@ -35,12 +35,12 @@ impl Table {
     pub fn print_variables(&self) {
         eprintln!("\n{}\t: {}\t: {}\n", "name", "kind", "value");
 
-        for l in self.variables.iter() {
+        for (name, var) in self.variables.iter() {
             eprintln!(
                 "{}\t: {}\t: |{}|",
-                l.0,
-                l.1.kind,
-                l.1.get_string(l.0, self).unwrap()
+                name,
+                var.kind,
+                var.get_string(self).unwrap()
             );
         }
     }
