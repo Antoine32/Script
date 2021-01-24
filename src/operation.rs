@@ -14,25 +14,25 @@ pub const OPERATORS: [&str; 28] = [
 ];
 
 pub enum Intruction {
-    ASG,
-    NOT,
-    ADD,
-    SUB,
-    MUL,
-    DIV,
-    MOD,
-    POW,
-    EQU,
-    NEQU,
-    XOR,
-    BAND,
-    BOR,
-    AND,
-    OR,
-    GRE,
-    LES,
-    EGRE,
-    ELES,
+    ASG,  // assign =
+    NOT,  // not !
+    ADD,  // add +
+    SUB,  // substract -
+    MUL,  // multiply *
+    DIV,  // division /
+    MOD,  // modulo %
+    POW,  // power **
+    EQU,  // equal ==
+    NEQU, // not equal !=
+    XOR,  // exlusif or ^
+    BAND, // bit and &
+    BOR,  // bit or |
+    AND,  // and &&
+    OR,   // or ||
+    GRE,  // greater-then >
+    LES,  // lesser-then <
+    EGRE, // greater-then or equal >=
+    ELES, // lesser-then or equal <=
 }
 
 impl std::fmt::Display for Intruction {
@@ -114,34 +114,6 @@ impl Clone for Intruction {
 }
 
 impl Copy for Intruction {}
-
-/*
-pub const ASG: usize = 0; // assign =
-pub const NOT: usize = 1; // not !
-pub const ADD: usize = 2; // add +
-pub const SUB: usize = 3; // substract -
-pub const MUL: usize = 4; // multiply *
-pub const DIV: usize = 5; // division /
-pub const MOD: usize = 6; // modulo %
-pub const POW: usize = 7; // power **
-pub const EQU: usize = 8; // equal ==
-pub const NEQU: usize = 9; // not equal !=
-pub const XOR: usize = 10; // exlusif or ^
-pub const BAND: usize = 11; // bit and &
-pub const BOR: usize = 12; // bit or |
-pub const AND: usize = 13; // and &&
-pub const OR: usize = 14; // or ||
-pub const GRE: usize = 15; // greater-then >
-pub const LES: usize = 16; // lesser-then <
-pub const EGRE: usize = 17; // greater-then or equal >=
-pub const ELES: usize = 18; // lesser-then or equal <=
-
-#[cfg(feature = "print")]
-pub const TAB_OP: [&str; 19] = [
-    "ASG", "NOT", "ADD", "SUB", "MUL", "DIV", "MOD", "POW", "EQU", "NEQU", "XOR", "BAND", "BOR",
-    "AND", "OR", "GRE", "LES", "EGRE", "ELES",
-];
-*/
 
 // Priority
 pub const P_NOT: usize = 0; // !
