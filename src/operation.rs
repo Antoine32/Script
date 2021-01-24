@@ -31,6 +31,7 @@ pub const LES: usize = 16; // lesser-then <
 pub const EGRE: usize = 17; // greater-then or equal >=
 pub const ELES: usize = 18; // lesser-then or equal <=
 
+#[cfg(debug_assertions)]
 pub const TAB_OP: [&str; 19] = [
     "ASG", "NOT", "ADD", "SUB", "MUL", "DIV", "MOD", "POW", "EQU", "NEQU", "XOR", "BAND", "BOR",
     "AND", "OR", "GRE", "LES", "EGRE", "ELES",
