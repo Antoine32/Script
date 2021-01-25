@@ -35,6 +35,10 @@ impl VecTable {
         }
     }
 
+    pub fn len(&self) -> usize {
+        self.tables.len()
+    }
+
     pub fn add_level(&mut self) {
         self.tables.push(Table::new());
     }

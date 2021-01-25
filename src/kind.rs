@@ -66,6 +66,13 @@ pub fn get_kind_possibility(chars: &[char]) -> (String, Kind) {
         string.push(*c);
     }
 
+    for o in OPERATORS.iter() {
+        if string.starts_with(o) {
+            kind = Kind::Operator;
+            break;
+        }
+    }
+
     while n < chars.len() {
         if chars[n] == '\"' || chars[n] == '\'' {
             kind = Kind::String;

@@ -6,16 +6,18 @@ use std::time::{Duration, Instant};
 #[cfg(feature = "multithread")]
 use std::{sync::mpsc::sync_channel, thread};
 
+mod instruction;
+mod instruction_fn;
 mod kind;
 mod operation;
-mod process_line;
+mod process;
 mod table;
 mod variable;
 mod vec_free;
 mod vec_table;
 
 use operation::*;
-use process_line::*;
+use process::*;
 use vec_table::*;
 
 /*
@@ -179,8 +181,7 @@ pub fn new_thread(
 
             *n += 1;
         }
-        None => {
-        }
+        None => {}
     }
 }
 
@@ -229,7 +230,6 @@ pub fn process_text(content: String) -> ProcessLine {
         }
     }
 
-    process_lines.level = 0;
     return process_lines;
 }
 
@@ -267,7 +267,7 @@ fn main() {
 
     let timer_b = Instant::now();
 
-    process_lines.run(&mut vec_table);
+    process_lines.run(&mut vec_table, 0);
 
     let time_b = timer_b.elapsed();
 

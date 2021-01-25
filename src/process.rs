@@ -1,35 +1,31 @@
+use crate::instruction::*;
+use crate::instruction_fn::*;
 use crate::kind::*;
 use crate::operation::*;
 use crate::table::*;
 use crate::variable::*;
 use crate::vec_table::*;
-use crate::{string_to_usize, usize_to_string};
+use std::collections::HashMap;
 
 #[allow(unused_imports)]
 use crate::{eprint, eprintln};
 
 pub struct ProcessLine {
-    pub level: usize,
     pub table: Table,
     pub operations: Vec<(Intruction, Vec<String>)>,
+    pub functions: HashMap<String, usize>,
 }
 
 impl ProcessLine {
     pub fn new() -> Self {
         ProcessLine {
-            level: 0,
             table: Table::new(),
             operations: Vec::new(),
+            functions: HashMap::new(),
         }
     }
 
     pub fn merge(&mut self, other: Self) {
-        if other.level != self.level {
-            self.level = other.level;
-            self.operations
-                .push((Intruction::SLV, vec![usize_to_string(self.level)]));
-        }
-
         for element in other.operations.into_iter() {
             self.operations.push(element);
         }
@@ -38,7 +34,7 @@ impl ProcessLine {
     }
 
     pub fn from(mut line: String, line_num: usize) -> (Self, String) {
-        line = line.trim_end().to_string();
+        line = line.trim().to_string();
 
         #[cfg(feature = "print")]
         let mut to_print_vec: Vec<String> = Vec::new();
@@ -109,12 +105,10 @@ impl ProcessLine {
             return String::new();
         }
 
-        let mut level = 0;
         let mut table = Table::new();
         let mut entry_list: Vec<String> = Vec::new();
         let mut operator_order: Vec<Vec<usize>> = Vec::with_capacity(LEVELS_OF_PRIORITY);
-
-        let mut leveling = true;
+        let mut functions: HashMap<String, usize> = HashMap::new();
 
         let line_char: Vec<char> = line.chars().collect();
         let mut n: usize = 0;
@@ -128,15 +122,7 @@ impl ProcessLine {
         while n < line_char.len() {
             c = line_char[n];
 
-            if leveling {
-                if c.is_whitespace() {
-                    level += 1;
-                    n += 1;
-                } else {
-                    level /= 4;
-                    leveling = false;
-                }
-            } else if !c.is_whitespace() {
+            if !c.is_whitespace() {
                 let (raw_value, kind) = get_kind_possibility(line_char.get(n..).unwrap());
 
                 if raw_value == "-" && last_kind == Kind::Operator {
@@ -261,9 +247,9 @@ impl ProcessLine {
 
         (
             ProcessLine {
-                level: level,
                 table: table,
                 operations: operations,
+                functions: functions,
             },
             to_print,
         )
@@ -296,17 +282,17 @@ impl ProcessLine {
         eprintln!("");
     }
 
-    pub fn run(&self, vec_table: &mut VecTable) {
+    pub fn run(&self, vec_table: &mut VecTable, pos: usize) {
         let mut this = self.clone();
-        vec_table.set_level(this.level);
 
         #[cfg(feature = "print")]
         let mut i = 0;
 
-        eprintln!("level: {}", self.level);
+        eprintln!("level: {}", vec_table.len() - 1);
         eprintln!("\n{}\t: {}\t: {}\n", "name", "kind", "value");
 
-        for (instruction, names) in this.operations.iter() {
+        for j in pos..(this.operations.len()) {
+            let (instruction, names) = &this.operations[j];
             let mut vars: Vec<Variable> = Vec::with_capacity(names.len());
 
             for name in names.iter() {
@@ -400,9 +386,24 @@ impl ProcessLine {
                 Intruction::ELES => {
                     less_equal(&vars[0], &vars[1], &names[0], &names[1], &mut this.table)
                 }
-                Intruction::SLV => {
-                    this.level = string_to_usize(&names[0]);
-                    vec_table.set_level(this.level);
+                Intruction::GOTO => {
+                    let clone = this.clone();
+                    let mut sending = VecTable::new();
+
+                    for i in 1..(names.len()) {
+                        assign(
+                            &vars[i],
+                            &format!("°{}°{}", i - 1, names[0]),
+                            &names[i],
+                            &mut this.table,
+                            &mut sending,
+                        );
+                    }
+
+                    clone.run(&mut sending, this.get_function(&names[0]));
+                }
+                Intruction::END => {
+                    break;
                 }
             }
         }
@@ -414,14 +415,18 @@ impl ProcessLine {
 
         eprintln!("\n---------------------------------------------------------------------\n");
     }
+
+    pub fn get_function(&self, name: &str) -> usize {
+        return *self.functions.get(name).unwrap();
+    }
 }
 
 impl Clone for ProcessLine {
     fn clone(&self) -> Self {
         ProcessLine {
-            level: self.level.clone(),
             table: self.table.clone(),
             operations: self.operations.clone(),
+            functions: self.functions.clone(),
         }
     }
 }
