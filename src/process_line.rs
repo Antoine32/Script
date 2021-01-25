@@ -11,22 +11,15 @@ use crate::{eprint, eprintln};
 pub struct ProcessLine {
     pub level: usize,
     pub table: Table,
-    pub imported: Vec<(String, String)>,
     pub operations: Vec<(Intruction, Vec<String>)>,
 }
 
 impl ProcessLine {
     pub fn new() -> Self {
-        let level = 0;
-        let table = Table::new();
-        let imported = Vec::new();
-        let operations = Vec::new();
-
         ProcessLine {
-            level: level,
-            table: table,
-            imported: imported,
-            operations: operations,
+            level: 0,
+            table: Table::new(),
+            operations: Vec::new(),
         }
     }
 
@@ -58,7 +51,6 @@ impl ProcessLine {
             last_kind: &mut Kind,
             last_raw_value: &mut String,
             entry_list: &mut Vec<String>,
-            imported: &mut Vec<(String, String)>,
             operator_order: &mut Vec<Vec<usize>>,
             mut raw_value: &str,
             kind: Kind,
@@ -87,9 +79,6 @@ impl ProcessLine {
                 );
 
                 match kind {
-                    Kind::Null => {
-                        imported.push((name.to_string(), raw_value.to_string()));
-                    }
                     Kind::Function => {
                         raw_value = raw_value
                             .get((raw_value.find('(').unwrap() + 1)..(raw_value.find(')').unwrap()))
@@ -122,7 +111,6 @@ impl ProcessLine {
 
         let mut level = 0;
         let mut table = Table::new();
-        let mut imported = Vec::new();
         let mut entry_list: Vec<String> = Vec::new();
         let mut operator_order: Vec<Vec<usize>> = Vec::with_capacity(LEVELS_OF_PRIORITY);
 
@@ -165,7 +153,6 @@ impl ProcessLine {
                             &mut last_kind,
                             &mut last_raw_value,
                             &mut entry_list,
-                            &mut imported,
                             &mut operator_order,
                             &raw_value,
                             kind,
@@ -182,7 +169,6 @@ impl ProcessLine {
                             &mut last_kind,
                             &mut last_raw_value,
                             &mut entry_list,
-                            &mut imported,
                             &mut operator_order,
                             "-1",
                             Kind::Number,
@@ -199,7 +185,6 @@ impl ProcessLine {
                             &mut last_kind,
                             &mut last_raw_value,
                             &mut entry_list,
-                            &mut imported,
                             &mut operator_order,
                             "*",
                             Kind::Operator,
@@ -221,7 +206,6 @@ impl ProcessLine {
                         &mut last_kind,
                         &mut last_raw_value,
                         &mut entry_list,
-                        &mut imported,
                         &mut operator_order,
                         &raw_value,
                         kind,
@@ -279,7 +263,6 @@ impl ProcessLine {
             ProcessLine {
                 level: level,
                 table: table,
-                imported: imported,
                 operations: operations,
             },
             to_print,
@@ -438,7 +421,6 @@ impl Clone for ProcessLine {
         ProcessLine {
             level: self.level.clone(),
             table: self.table.clone(),
-            imported: self.imported.clone(),
             operations: self.operations.clone(),
         }
     }
