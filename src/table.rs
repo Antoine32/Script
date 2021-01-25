@@ -11,10 +11,11 @@ use crate::{eprint, eprintln};
 pub struct Table {
     pub variables: HashMap<String, Variable>,
     //
-    vec_string: VecFree<String>,
-    vec_number: VecFree<f64>,
-    vec_bigint: VecFree<BigInt>,
-    vec_bool: VecFree<bool>,
+    pub vec_string: VecFree<String>,
+    pub vec_number: VecFree<f64>,
+    pub vec_bigint: VecFree<BigInt>,
+    pub vec_bool: VecFree<bool>,
+    pub vec_function: VecFree<Vec<String>>,
     //
     null: Variable,
 }
@@ -28,6 +29,7 @@ impl Table {
             vec_number: VecFree::new(),
             vec_bigint: VecFree::new(),
             vec_bool: VecFree::new(),
+            vec_function: VecFree::new(),
             //
             null: Variable::new_null(0),
         }
@@ -48,6 +50,32 @@ impl Table {
         }
     }
 
+    pub fn merge(&mut self, other: Self) {
+        for (entry, mut var) in other.variables.into_iter() {
+            match var.kind {
+                Kind::String => {
+                    var.pos = self.vec_string.add(other.vec_string[var.pos].clone());
+                }
+                Kind::Number => {
+                    var.pos = self.vec_number.add(other.vec_number[var.pos]);
+                }
+                Kind::BigInt => {
+                    var.pos = self.vec_bigint.add(other.vec_bigint[var.pos].clone());
+                }
+                Kind::Bool => {
+                    var.pos = self.vec_bool.add(other.vec_bool[var.pos]);
+                }
+                Kind::Operator => {}
+                Kind::Null => {}
+                Kind::Function => {
+                    var.pos = self.vec_function.add(other.vec_function[var.pos].clone());
+                }
+            }
+
+            self.variables.insert(entry, var);
+        }
+    }
+
     pub fn set_from_file(&mut self, entry: &str, raw_value: &str, kind: Kind) {
         match kind {
             Kind::String => self.set_string(entry, decode_string(raw_value)),
@@ -56,7 +84,10 @@ impl Table {
             Kind::Bool => self.set_bool(entry, raw_value.parse::<bool>().unwrap()),
             Kind::Operator => self.set_operator(entry, get_operator_num(raw_value).unwrap()),
             Kind::Null => self.set_null(entry),
-            Kind::Function => self.set_function(entry, raw_value.parse::<usize>().unwrap()), // to change
+            Kind::Function => self.set_function(
+                entry,
+                raw_value.split(',').map(|s| s.trim().to_string()).collect(), // change to implementation with process_line
+            ),
         }
     }
 
@@ -78,6 +109,7 @@ impl Table {
                     Kind::Number => Variable::new_number(pos),
                     Kind::BigInt => Variable::new_bigint(pos),
                     Kind::Bool => Variable::new_bool(pos),
+                    Kind::Function => Variable::new_function(pos),
                     _ => Variable::new_null(pos),
                 };
 
@@ -144,15 +176,13 @@ impl Table {
         self.remove_entry(entry);
     }
 
-    pub fn set_function(&mut self, entry: &str, value: usize) {
-        match self.get_mut(&entry) {
-            Ok(var) => {
-                var.set(Kind::Function, value);
-            }
-            Err(_) => {
-                let var = Variable::new_function(value);
-                self.variables.insert(entry.to_string(), var);
-            }
+    pub fn set_function(&mut self, entry: &str, value: Vec<String>) {
+        let pos_a = self.vec_function.add(value.clone());
+        let pos_b = self.set(entry, pos_a, Kind::Function);
+
+        if pos_a != pos_b {
+            self.vec_function.remove(pos_a);
+            self.vec_function[pos_b] = value;
         }
     }
 
@@ -194,8 +224,8 @@ impl Table {
         }
     }
 
-    pub fn get_string(&self, pos: usize) -> &str {
-        self.vec_string[pos].as_str()
+    pub fn get_string(&self, pos: usize) -> String {
+        self.vec_string[pos].clone()
     }
 
     pub fn get_number(&self, pos: usize) -> f64 {
@@ -248,6 +278,9 @@ impl Table {
             Kind::Bool => {
                 self.vec_bool.remove(pos);
             }
+            Kind::Function => {
+                self.vec_function.remove(pos);
+            }
             _ => {}
         }
     }
@@ -268,6 +301,7 @@ impl Clone for Table {
             vec_number: self.vec_number.clone(),
             vec_bigint: self.vec_bigint.clone(),
             vec_bool: self.vec_bool.clone(),
+            vec_function: self.vec_function.clone(),
             //
             null: Variable::new_null(0),
         }

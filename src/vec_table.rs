@@ -130,17 +130,14 @@ impl VecTable {
         self.set_null_specified(self.tables.len() - 1, entry);
     }
 
-    pub fn get(&self, entry: &str) -> (&Variable, usize) {
+    pub fn get(&self, entry: &str) -> Option<(&Variable, usize)> {
         for i in (0..(self.tables.len())).rev() {
             if self.tables[i].contains(entry) {
-                return (self.tables[i].get(entry), i);
+                return Some((self.tables[i].get(entry), i));
             }
         }
 
-        (
-            self.tables[self.tables.len() - 1].get(entry),
-            self.tables.len() - 1,
-        )
+        None
     }
 
     pub fn get_level(&self, level: usize) -> &Table {

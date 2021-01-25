@@ -40,6 +40,56 @@ macro_rules! eprintln {
     }
 }
 
+pub fn usize_to_string(mut num: usize) -> String {
+    let mut string = String::new();
+    let mut vec_pow: Vec<u128> = Vec::new();
+
+    let init = 0x110000;
+    vec_pow.push(1);
+
+    let mut i = 1;
+
+    while num as u128 >= vec_pow[i - 1] {
+        vec_pow.push(vec_pow[i - 1] * init);
+        i += 1;
+    }
+
+    while i > 0 {
+        i -= 1;
+
+        let fit = (num as u128 / vec_pow[i]) as u32;
+        num -= fit as usize * vec_pow[i] as usize;
+
+        match std::char::from_u32(fit) {
+            Some(ch) => string.push(ch),
+            None => string.push(0 as char),
+        }
+    }
+
+    return string;
+}
+
+pub fn string_to_usize(string: &str) -> usize {
+    let mut num: usize = 0;
+    let mut vec_pow: Vec<usize> = Vec::new();
+
+    if string.len() > 0 {
+        let init = 0x110000;
+        vec_pow.push(1);
+
+        for i in 0..(string.chars().count() - 1) {
+            vec_pow.push(vec_pow[i] * init);
+        }
+
+        for ch in string.chars() {
+            let p = vec_pow.pop().unwrap();
+            num += p * (ch as usize);
+        }
+    }
+
+    return num;
+}
+
 pub fn quicksort<E: Ord>(arr: &mut [E]) {
     if 1 < arr.len() {
         let (mut pivot, mut hi) = (0, arr.len() - 1);
@@ -124,18 +174,17 @@ pub fn new_thread(
             let na = *n;
 
             thread::spawn(move || {
-                sender.send(ProcessLine::new(line, na)).unwrap();
+                sender.send(ProcessLine::from(line, na)).unwrap();
             });
 
             *n += 1;
         }
         None => {
-            //receivers.remove(*i);
         }
     }
 }
 
-pub fn process_text(content: String) -> Vec<ProcessLine> {
+pub fn process_text(content: String) -> ProcessLine {
     let mut lines: Vec<String> = content
         .replace(";\n", "\n")
         .replace(";", "\n")
@@ -144,7 +193,7 @@ pub fn process_text(content: String) -> Vec<ProcessLine> {
         .map(|s| s.to_string())
         .collect();
 
-    let mut process_lines: Vec<ProcessLine> = Vec::with_capacity(lines.len());
+    let mut process_lines = ProcessLine::new();
 
     let mut n: usize = 0;
 
@@ -152,8 +201,8 @@ pub fn process_text(content: String) -> Vec<ProcessLine> {
     {
         while lines.len() > 0 {
             #[allow(unused_variables)]
-            let (processed_line, to_print) = ProcessLine::new(lines.pop().unwrap(), n);
-            process_lines.push(processed_line);
+            let (processed_line, to_print) = ProcessLine::from(lines.pop().unwrap(), n);
+            process_lines.merge(processed_line);
             eprintln!("{}", to_print);
 
             n += 1;
@@ -171,19 +220,16 @@ pub fn process_text(content: String) -> Vec<ProcessLine> {
             new_thread(&mut receivers, &mut lines, &mut n);
         }
 
-        while process_lines.len() < len && receivers.len() > 0 {
-            for i in 0..(receivers.len()) {
-                #[allow(unused_variables)]
-                let (processed_line, to_print) = receivers[i].recv().unwrap();
-                process_lines.push(processed_line);
+        for i in 0..(receivers.len()) {
+            #[allow(unused_variables)]
+            let (processed_line, to_print) = receivers[i].recv().unwrap();
+            process_lines.merge(processed_line);
 
-                //new_thread(&mut receivers, &mut lines, &mut n, &mut i);
-
-                eprintln!("{}", to_print);
-            }
+            eprintln!("{}", to_print);
         }
     }
 
+    process_lines.level = 0;
     return process_lines;
 }
 
@@ -221,16 +267,7 @@ fn main() {
 
     let timer_b = Instant::now();
 
-    for process_line in process_lines.iter() {
-        process_line.run(&mut vec_table);
-
-        eprintln!("\n---------------------------------------------------------------------\n");
-
-        #[cfg(feature = "print")]
-        vec_table.print_tables();
-
-        eprintln!("\n---------------------------------------------------------------------\n");
-    }
+    process_lines.run(&mut vec_table);
 
     let time_b = timer_b.elapsed();
 

@@ -133,6 +133,17 @@ pub fn get_kind_possibility(chars: &[char]) -> (String, Kind) {
                 n += 1;
             }
 
+            if n < chars.len() && chars[n] == '(' {
+                kind = Kind::Function;
+                n += 1;
+
+                while n < chars.len() && chars[n] != ')' {
+                    n += 1;
+                }
+
+                n += 1;
+            }
+
             break;
         } else if chars[n] == '-' {
             if !(chars.len() > n + 1 && chars[n + 1].is_numeric()) {

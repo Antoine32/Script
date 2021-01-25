@@ -7,12 +7,6 @@ use num::{BigInt, One, Signed, Zero};
 #[allow(unused_imports)]
 use crate::{eprint, eprintln};
 
-// Operator
-pub const OPERATORS: [&str; 28] = [
-    "**=", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "&&", "||", "**", "==", "!=", "<=",
-    ">=", "<", ">", "=", "+", "-", "*", "/", "%", "!", "^", "&", "|",
-];
-
 pub enum Intruction {
     ASG,  // assign =
     NOT,  // not !
@@ -33,6 +27,7 @@ pub enum Intruction {
     LES,  // lesser-then <
     EGRE, // greater-then or equal >=
     ELES, // lesser-then or equal <=
+    SLV,  // set the level
 }
 
 impl std::fmt::Display for Intruction {
@@ -57,6 +52,7 @@ impl std::fmt::Display for Intruction {
             Intruction::LES => write!(f, "LES"),
             Intruction::EGRE => write!(f, "EGRE"),
             Intruction::ELES => write!(f, "ELES"),
+            Intruction::SLV => write!(f, "SLV"),
         }
     }
 }
@@ -83,6 +79,7 @@ impl std::cmp::PartialEq for Intruction {
             Intruction::LES => matches!(other, Intruction::LES),
             Intruction::EGRE => matches!(other, Intruction::EGRE),
             Intruction::ELES => matches!(other, Intruction::ELES),
+            Intruction::SLV => matches!(other, Intruction::SLV),
         }
     }
 }
@@ -109,24 +106,31 @@ impl Clone for Intruction {
             Intruction::LES => Intruction::LES,
             Intruction::EGRE => Intruction::EGRE,
             Intruction::ELES => Intruction::ELES,
+            Intruction::SLV => Intruction::SLV,
         }
     }
 }
 
 impl Copy for Intruction {}
 
+// Operator
+pub const OPERATORS: [&str; 30] = [
+    "**=", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "&&", "||", "**", "==", "!=", "<=",
+    ">=", "<", ">", "=", "+", "-", "*", "/", "%", "!", "^", "&", "|", "(", ")",
+];
+
 // Priority
-pub const P_NOT: usize = 0; // !
-pub const P_POW: usize = 1; // **
-pub const P_MULT_DIV_MOD: usize = 2; // * / %
-pub const P_ADD_SUB: usize = 3; // + -
-pub const P_BIT_AND: usize = 4; // &
+pub const P_NOT: usize = 10; // !
+pub const P_POW: usize = 9; // **
+pub const P_MULT_DIV_MOD: usize = 8; // * / %
+pub const P_ADD_SUB: usize = 7; // + -
+pub const P_BIT_AND: usize = 6; // &
 pub const P_EXLUSIF_OR: usize = 5; // ^
-pub const P_BIT_OR: usize = 6; // |
-pub const P_COMPARAISON: usize = 7; // == != < > <= >=
-pub const P_AND: usize = 8; // &&
-pub const P_OR: usize = 9; // ||
-pub const P_ASSIGNEMENT: usize = 10; // = += -= *= /= %= &= |= ^= **=
+pub const P_BIT_OR: usize = 4; // |
+pub const P_COMPARAISON: usize = 3; // == != < > <= >=
+pub const P_AND: usize = 2; // &&
+pub const P_OR: usize = 1; // ||
+pub const P_ASSIGNEMENT: usize = 0; // = += -= *= /= %= &= |= ^= **=
 
 pub const LEVELS_OF_PRIORITY: usize = 11;
 
