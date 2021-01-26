@@ -1,4 +1,5 @@
 use crate::default_fn::*;
+use crate::kind::*;
 use crate::process::*;
 use crate::tuple::*;
 use crate::vec_table::*;
@@ -21,35 +22,57 @@ impl Function {
         }
     }
 
-    pub fn run(
-        &self,
-        arguments_import: &Tuple,
-        process: &Process,
-        vec_table: &mut VecTable,
-    ) -> Tuple {
+    pub fn run(&self, arguments: &Tuple, process: &Process, vec_table: &mut VecTable) -> Tuple {
+        vec_table.add_level();
+
         let len = {
-            if arguments_import.len() <= self.arguments.len() {
-                arguments_import.len()
+            if arguments.len() <= self.arguments.len() {
+                arguments.len()
             } else {
                 self.arguments.len()
             }
         };
 
-        let mut arguments = Tuple::new();
+        let table = vec_table.get_level(vec_table.len() - 1);
 
         for i in 0..len {
-            arguments.push(
-                arguments_import.get(i),
-                self.arguments.get_name(i),
-                &arguments_import.table,
-            )
+            let var = arguments.get(i);
+            let name = get_real_name(self.arguments.get_name(i));
+
+            match var.kind {
+                Kind::String => {
+                    table.set_string(name, arguments.table.vec_string[var.pos].clone());
+                }
+                Kind::Number => {
+                    table.set_number(name, arguments.table.vec_number[var.pos].clone());
+                }
+                Kind::BigInt => {
+                    table.set_bigint(name, arguments.table.vec_bigint[var.pos].clone());
+                }
+                Kind::Bool => {
+                    table.set_bool(name, arguments.table.vec_bool[var.pos].clone());
+                }
+                Kind::Tuple => {
+                    table.set_tuple(name, arguments.table.vec_tuple[var.pos].clone());
+                }
+                Kind::Operator => {}
+                Kind::Null => {
+                    table.set_null(name);
+                }
+                Kind::Function => {}
+            }
         }
 
-        if self.default_fn {
+        let table = 0;
+
+        let val = if self.default_fn {
             DEFAULTS_FUNCTIONS[self.pos].run(vec_table) // not sure if vec_table should be added here but I don't have any use for it currentyly
         } else {
             process.run(vec_table, self.pos)
-        }
+        };
+
+        vec_table.remove_level();
+        return val;
     }
 }
 

@@ -2,6 +2,7 @@ use crate::get_real_name;
 use crate::kind::*;
 use crate::table::*;
 use crate::variable::*;
+use crate::CHAR_SEP_NAME;
 
 #[allow(unused_imports)]
 use crate::{eprint, eprintln};
@@ -40,13 +41,13 @@ impl Tuple {
     }
 
     pub fn push_null(&mut self, mut name: &str) {
-        name = get_real_name(name);
+        name = format!("{}{}{}", get_real_name(name), CHAR_SEP_NAME, self.len());
         self.order.push(name.to_string());
         self.table.set_null(name);
     }
 
     pub fn push(&mut self, var: &Variable, mut name: &str, table: &Table) {
-        name = get_real_name(name);
+        name = format!("{}{}{}", get_real_name(name), CHAR_SEP_NAME, self.len());
         self.order.push(name.to_string());
 
         match var.kind {

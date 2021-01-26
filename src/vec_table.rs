@@ -160,8 +160,8 @@ impl VecTable {
         None
     }
 
-    pub fn get_level(&self, level: usize) -> &Table {
-        &self.tables[level]
+    pub fn get_level(&mut self, level: usize) -> &mut Table {
+        &mut self.tables[level]
     }
 }
 

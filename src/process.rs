@@ -387,7 +387,6 @@ impl Process {
                     less_equal(&vars[0], &vars[1], &names[0], &names[1], &mut this.table)
                 }
                 Intruction::GOTO => {
-                    vec_table.add_level();
                     let name = names.remove(0);
 
                     let tuple = {
