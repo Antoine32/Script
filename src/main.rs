@@ -6,12 +6,14 @@ use std::time::{Duration, Instant};
 #[cfg(feature = "multithread")]
 use std::{sync::mpsc::sync_channel, thread};
 
+mod default_fn;
 mod instruction;
 mod instruction_fn;
 mod kind;
 mod operation;
 mod process;
 mod table;
+mod tuple;
 mod variable;
 mod vec_free;
 mod vec_table;
@@ -164,7 +166,7 @@ pub fn decode_string(string: &str) -> String {
 
 #[cfg(feature = "multithread")]
 pub fn new_thread(
-    receivers: &mut Vec<std::sync::mpsc::Receiver<(ProcessLine, String)>>,
+    receivers: &mut Vec<std::sync::mpsc::Receiver<(Process, String)>>,
     lines: &mut Vec<String>,
     n: &mut usize,
 ) {
@@ -176,7 +178,7 @@ pub fn new_thread(
             let na = *n;
 
             thread::spawn(move || {
-                sender.send(ProcessLine::from(line, na)).unwrap();
+                sender.send(Process::from(line, na)).unwrap();
             });
 
             *n += 1;
@@ -185,7 +187,7 @@ pub fn new_thread(
     }
 }
 
-pub fn process_text(content: String) -> ProcessLine {
+pub fn process_text(content: String) -> Process {
     let mut lines: Vec<String> = content
         .replace(";\n", "\n")
         .replace(";", "\n")
@@ -194,7 +196,7 @@ pub fn process_text(content: String) -> ProcessLine {
         .map(|s| s.to_string())
         .collect();
 
-    let mut process_lines = ProcessLine::new();
+    let mut process_lines = Process::new();
 
     let mut n: usize = 0;
 
@@ -202,7 +204,7 @@ pub fn process_text(content: String) -> ProcessLine {
     {
         while lines.len() > 0 {
             #[allow(unused_variables)]
-            let (processed_line, to_print) = ProcessLine::from(lines.pop().unwrap(), n);
+            let (processed_line, to_print) = Process::from(lines.pop().unwrap(), n);
             process_lines.merge(processed_line);
             eprintln!("{}", to_print);
 
@@ -214,7 +216,7 @@ pub fn process_text(content: String) -> ProcessLine {
     {
         let len = lines.len();
 
-        let mut receivers: Vec<std::sync::mpsc::Receiver<(ProcessLine, String)>> =
+        let mut receivers: Vec<std::sync::mpsc::Receiver<(Process, String)>> =
             Vec::with_capacity(len);
 
         while lines.len() > 0 {

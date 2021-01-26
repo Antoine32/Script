@@ -11,7 +11,7 @@ pub struct VecFree<T: Clone> {
 
 impl<T: Clone> VecFree<T> {
     pub fn new() -> Self {
-        VecFree {
+        Self {
             vec_val: Vec::new(),
             free_val: Vec::new(),
         }
@@ -79,7 +79,7 @@ impl<T: Clone> IndexMut<usize> for VecFree<T> {
 
 impl<T: Clone> Clone for VecFree<T> {
     fn clone(&self) -> Self {
-        VecFree {
+        Self {
             vec_val: self.vec_val.clone(),
             free_val: self.free_val.clone(),
         }

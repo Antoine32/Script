@@ -1,40 +1,6 @@
 #[allow(unused_imports)]
 use crate::{eprint, eprintln};
 
-pub static OPERATORS_STR: [&str; 31] = [
-    Operator::PowAsign.get_str(),
-    Operator::AddAsign.get_str(),
-    Operator::SubAsign.get_str(),
-    Operator::MulAsign.get_str(),
-    Operator::DivAsign.get_str(),
-    Operator::ModAsign.get_str(),
-    Operator::BandAsign.get_str(),
-    Operator::BorAsign.get_str(),
-    Operator::XorAsign.get_str(),
-    Operator::Asign.get_str(),
-    Operator::And.get_str(),
-    Operator::Or.get_str(),
-    Operator::Pow.get_str(),
-    Operator::Mul.get_str(),
-    Operator::Div.get_str(),
-    Operator::Mod.get_str(),
-    Operator::Add.get_str(),
-    Operator::Sub.get_str(),
-    Operator::Band.get_str(),
-    Operator::Bor.get_str(),
-    Operator::Xor.get_str(),
-    Operator::Not.get_str(),
-    Operator::Greater.get_str(),
-    Operator::Lesser.get_str(),
-    Operator::Equal.get_str(),
-    Operator::GreaterEqual.get_str(),
-    Operator::LesserEqual.get_str(),
-    Operator::NotEqual.get_str(),
-    Operator::PriorityIncrement.get_str(),
-    Operator::PriorityDecrement.get_str(),
-    Operator::Separator.get_str(),
-];
-
 pub const OPERATORS: [Operator; 31] = [
     Operator::PowAsign,
     Operator::AddAsign,
@@ -67,6 +33,40 @@ pub const OPERATORS: [Operator; 31] = [
     Operator::PriorityIncrement,
     Operator::PriorityDecrement,
     Operator::Separator,
+];
+
+pub const OPERATORS_STR: [&str; OPERATORS.len()] = [
+    Operator::PowAsign.get_str(),
+    Operator::AddAsign.get_str(),
+    Operator::SubAsign.get_str(),
+    Operator::MulAsign.get_str(),
+    Operator::DivAsign.get_str(),
+    Operator::ModAsign.get_str(),
+    Operator::BandAsign.get_str(),
+    Operator::BorAsign.get_str(),
+    Operator::XorAsign.get_str(),
+    Operator::Asign.get_str(),
+    Operator::And.get_str(),
+    Operator::Or.get_str(),
+    Operator::Pow.get_str(),
+    Operator::Mul.get_str(),
+    Operator::Div.get_str(),
+    Operator::Mod.get_str(),
+    Operator::Add.get_str(),
+    Operator::Sub.get_str(),
+    Operator::Band.get_str(),
+    Operator::Bor.get_str(),
+    Operator::Xor.get_str(),
+    Operator::Not.get_str(),
+    Operator::Greater.get_str(),
+    Operator::Lesser.get_str(),
+    Operator::Equal.get_str(),
+    Operator::GreaterEqual.get_str(),
+    Operator::LesserEqual.get_str(),
+    Operator::NotEqual.get_str(),
+    Operator::PriorityIncrement.get_str(),
+    Operator::PriorityDecrement.get_str(),
+    Operator::Separator.get_str(),
 ];
 
 pub enum Operator {
@@ -214,7 +214,7 @@ impl Operator {
 
 impl std::fmt::Display for Operator {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.get_priority())
+        write!(f, "{}", self.get_str())
     }
 }
 

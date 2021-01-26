@@ -18,12 +18,12 @@ pub struct Table {
     pub vec_bool: VecFree<bool>,
     pub vec_function: VecFree<Vec<String>>,
     //
-    null: Variable,
+    pub null: Variable,
 }
 
 impl Table {
     pub fn new() -> Self {
-        Table {
+        Self {
             variables: HashMap::new(),
             //
             vec_string: VecFree::new(),

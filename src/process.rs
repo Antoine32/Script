@@ -10,15 +10,15 @@ use std::collections::HashMap;
 #[allow(unused_imports)]
 use crate::{eprint, eprintln};
 
-pub struct ProcessLine {
+pub struct Process {
     pub table: Table,
     pub operations: Vec<(Intruction, Vec<String>)>,
     pub functions: HashMap<String, usize>,
 }
 
-impl ProcessLine {
+impl Process {
     pub fn new() -> Self {
-        ProcessLine {
+        Process {
             table: Table::new(),
             operations: Vec::new(),
             functions: HashMap::new(),
@@ -246,7 +246,7 @@ impl ProcessLine {
         }
 
         (
-            ProcessLine {
+            Process {
                 table: table,
                 operations: operations,
                 functions: functions,
@@ -421,9 +421,9 @@ impl ProcessLine {
     }
 }
 
-impl Clone for ProcessLine {
+impl Clone for Process {
     fn clone(&self) -> Self {
-        ProcessLine {
+        Process {
             table: self.table.clone(),
             operations: self.operations.clone(),
             functions: self.functions.clone(),
