@@ -85,7 +85,7 @@ impl VecTable {
     }
 
     pub fn set_string(&mut self, entry: &str, value: String) {
-        for i in 0..(self.tables.len()) {
+        for i in (0..(self.tables.len())).rev() {
             if self.tables[i].contains(entry) {
                 self.set_string_specified(i, entry, value);
                 return;
@@ -96,7 +96,7 @@ impl VecTable {
     }
 
     pub fn set_number(&mut self, entry: &str, value: f64) {
-        for i in 0..(self.tables.len()) {
+        for i in (0..(self.tables.len())).rev() {
             if self.tables[i].contains(entry) {
                 self.set_number_specified(i, entry, value);
                 return;
@@ -107,7 +107,7 @@ impl VecTable {
     }
 
     pub fn set_bigint(&mut self, entry: &str, value: BigInt) {
-        for i in 0..(self.tables.len()) {
+        for i in (0..(self.tables.len())).rev() {
             if self.tables[i].contains(entry) {
                 self.set_bigint_specified(i, entry, value);
                 return;
@@ -118,7 +118,7 @@ impl VecTable {
     }
 
     pub fn set_bool(&mut self, entry: &str, value: bool) {
-        for i in 0..(self.tables.len()) {
+        for i in (0..(self.tables.len())).rev() {
             if self.tables[i].contains(entry) {
                 self.set_bool_specified(i, entry, value);
                 return;
@@ -129,7 +129,7 @@ impl VecTable {
     }
 
     pub fn set_null(&mut self, entry: &str) {
-        for i in 0..(self.tables.len()) {
+        for i in (0..(self.tables.len())).rev() {
             if self.tables[i].contains(entry) {
                 self.set_null_specified(i, entry);
                 return;
@@ -140,7 +140,7 @@ impl VecTable {
     }
 
     pub fn set_function(&mut self, entry: &str, value: Function) {
-        for i in 0..(self.tables.len()) {
+        for i in (0..(self.tables.len())).rev() {
             if self.tables[i].contains(entry) {
                 self.set_function_specified(i, entry, value);
                 return;

@@ -46,9 +46,9 @@ impl Function {
         }
 
         if self.default_fn {
-            DEFAULTS_FUNCTIONS[self.pos].run(&arguments) // not sure if vec_table should be added here but I don't have any use for it currentyly
+            DEFAULTS_FUNCTIONS[self.pos].run(vec_table) // not sure if vec_table should be added here but I don't have any use for it currentyly
         } else {
-            process.run(vec_table, self.pos, &arguments)
+            process.run(vec_table, self.pos)
         }
     }
 }

@@ -1,4 +1,6 @@
-use crate::*;
+use crate::tuple::*;
+use crate::vec_table::*;
+use crate::CHAR_SEP_NAME;
 
 #[allow(unused_imports)]
 use crate::{eprint, eprintln};
@@ -34,7 +36,7 @@ impl DefaultFunction {
         }
     }
 
-    pub fn run(&self, tuple: &Tuple) -> Tuple {
+    pub fn run(&self, tuple: &mut VecTable) -> Tuple {
         match self {
             Self::Print => print(tuple),
             Self::Read => read(),
@@ -68,8 +70,17 @@ impl Clone for DefaultFunction {
 
 impl Copy for DefaultFunction {}
 
-fn print(tuple: &Tuple) -> Tuple {
-    println!("{}", tuple);
+const PRINT_VAR_0: &str = "text";
+fn print(vec_table: &mut VecTable) -> Tuple {
+    match vec_table.get(PRINT_VAR_0) {
+        Some((var, level)) => println!(
+            "{}",
+            var.get_string(PRINT_VAR_0, vec_table.get_level(level))
+                .unwrap()
+        ),
+        None => println!(""),
+    }
+
     return Tuple::new();
 }
 

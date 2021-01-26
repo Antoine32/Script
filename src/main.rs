@@ -23,7 +23,6 @@ use default_fn::*;
 use function::*;
 use operation::*;
 use process::*;
-use tuple::*;
 use vec_table::*;
 
 pub const CHAR_SEP_NAME: char = CHAR_SEP_NAME;
@@ -279,7 +278,7 @@ fn main() {
 
     let timer_b = Instant::now();
 
-    process_lines.run(&mut vec_table, 0, &Tuple::new());
+    process_lines.run(&mut vec_table, 0);
 
     let time_b = timer_b.elapsed();
 
