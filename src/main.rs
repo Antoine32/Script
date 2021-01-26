@@ -266,7 +266,7 @@ fn main() {
     let mut vec_table = VecTable::new();
 
     for i in 0..(DEFAULTS_FUNCTIONS.len()) {
-        vec_table.set_function(DEFAULTS_FUNCTIONS_STR[i], Function::new(true, i));
+        vec_table.set_function(DEFAULTS_FUNCTIONS_STR[i], Function::new(true, i, vec![]));
     }
 
     let timer_a = Instant::now();

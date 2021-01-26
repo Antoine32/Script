@@ -19,7 +19,17 @@ impl Tuple {
         }
     }
 
-    pub fn from(names: &Vec<String>, table: &Table) -> Self {
+    pub fn init(names: &Vec<&str>) -> Self {
+        let mut tuple = Self::new();
+
+        for name in names.iter() {
+            tuple.push_null(name);
+        }
+
+        return tuple;
+    }
+
+    pub fn from(names: &Vec<&str>, table: &Table) -> Self {
         let mut tuple = Self::new();
 
         for name in names.iter() {
@@ -27,6 +37,12 @@ impl Tuple {
         }
 
         return tuple;
+    }
+
+    pub fn push_null(&mut self, mut name: &str) {
+        name = get_real_name(name);
+        self.order.push(name.to_string());
+        self.table.set_null(name);
     }
 
     pub fn push(&mut self, var: &Variable, mut name: &str, table: &Table) {
@@ -53,7 +69,9 @@ impl Tuple {
                 self.table.set_tuple(name, table.vec_tuple[var.pos].clone());
             }
             Kind::Operator => {}
-            Kind::Null => {}
+            Kind::Null => {
+                self.table.set_null(name);
+            }
             Kind::Function => {}
         }
     }

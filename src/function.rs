@@ -13,11 +13,11 @@ pub struct Function {
 }
 
 impl Function {
-    pub fn new(default_fn: bool, pos: usize) -> Self {
+    pub fn new(default_fn: bool, pos: usize, arguments: &Vec<&str>) -> Self {
         Self {
             default_fn: default_fn,
             pos: pos,
-            arguments: Tuple::new(),
+            arguments: Tuple::init(arguments),
         }
     }
 

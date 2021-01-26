@@ -95,15 +95,17 @@ impl Table {
             }
             Kind::Null => self.set_null(entry),
             Kind::Function => {
-                self.set_function(entry, Function::new(false, string_to_usize(raw_value)))
+                let (pos, arguments) = raw_value.split_at(raw_value.find(CHAR_SEP_NAME).unwrap());
+
+                let pos = string_to_usize(pos);
+                let arguments: Vec<&str> = arguments.split_terminator(CHAR_SEP_NAME).collect();
+
+                self.set_function(entry, Function::new(false, pos, &arguments))
             }
             Kind::Tuple => self.set_tuple(
                 entry,
                 Tuple::from(
-                    &raw_value
-                        .split(CHAR_SEP_NAME)
-                        .map(|s| s.trim().to_string())
-                        .collect(),
+                    &raw_value.split(CHAR_SEP_NAME).map(|s| s.trim()).collect(),
                     self,
                 ),
             ),

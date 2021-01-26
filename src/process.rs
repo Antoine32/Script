@@ -392,7 +392,7 @@ impl Process {
 
                     let tuple = {
                         if names.len() > 0 {
-                            Tuple::from(&names, &this.table)
+                            Tuple::from(&names.iter().map(|n| n.as_str()).collect(), &this.table)
                         } else {
                             Tuple::new()
                         }
@@ -411,7 +411,10 @@ impl Process {
                             .get_tuple(&names[0], &this.table)
                             .unwrap();
                     } else {
-                        return Tuple::from(&names, &this.table);
+                        return Tuple::from(
+                            &names.iter().map(|n| n.as_str()).collect(),
+                            &this.table,
+                        );
                     }
                 }
             }
