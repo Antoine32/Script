@@ -1,3 +1,4 @@
+use crate::get_real_name;
 use crate::kind::*;
 use crate::table::*;
 use crate::variable::*;
@@ -12,9 +13,47 @@ pub struct Tuple {
 
 impl Tuple {
     pub fn new() -> Self {
-        Tuple {
+        Self {
             table: Table::new(),
             order: Vec::new(),
+        }
+    }
+
+    pub fn from(names: &Vec<String>, table: &Table) -> Self {
+        let mut tuple = Self::new();
+
+        for name in names.iter() {
+            tuple.push(table.get(name), name, table);
+        }
+
+        return tuple;
+    }
+
+    pub fn push(&mut self, var: &Variable, name: &str, table: &Table) {
+        self.order.push(name.to_string());
+
+        match var.kind {
+            Kind::String => {
+                self.table
+                    .set_string(name, table.vec_string[var.pos].clone());
+            }
+            Kind::Number => {
+                self.table
+                    .set_number(name, table.vec_number[var.pos].clone());
+            }
+            Kind::BigInt => {
+                self.table
+                    .set_bigint(name, table.vec_bigint[var.pos].clone());
+            }
+            Kind::Bool => {
+                self.table.set_bool(name, table.vec_bool[var.pos].clone());
+            }
+            Kind::Tuple => {
+                self.table.set_tuple(name, table.vec_tuple[var.pos].clone());
+            }
+            Kind::Operator => {}
+            Kind::Null => {}
+            Kind::Function => {}
         }
     }
 
@@ -48,7 +87,11 @@ impl std::fmt::Display for Tuple {
             }
         }
 
-        write!(f, "({})", string)
+        match self.len() {
+            0 => write!(f, ""),
+            1 => write!(f, "{}", string),
+            _ => write!(f, "({})", string),
+        }
     }
 }
 
@@ -99,6 +142,13 @@ impl std::cmp::PartialEq for Tuple {
                             return false;
                         }
                         Kind::Null => {}
+                        Kind::Tuple => {
+                            if var_self.get_tuple(name_self, &self.table).unwrap()
+                                != var_other.get_tuple(name_other, &self.table).unwrap()
+                            {
+                                return false;
+                            }
+                        }
                     }
                 } else {
                     return false;

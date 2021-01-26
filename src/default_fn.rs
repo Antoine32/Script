@@ -1,3 +1,5 @@
+use crate::tuple::*;
+
 #[allow(unused_imports)]
 use crate::{eprint, eprintln};
 
@@ -5,8 +7,8 @@ pub const DEFAULTS_FUNCTIONS: [DefaultFunction; 2] =
     [DefaultFunction::Print, DefaultFunction::Read];
 
 pub const DEFAULTS_FUNCTIONS_STR: [&str; DEFAULTS_FUNCTIONS.len()] = [
-    DefaultFunction::Print.get_str(),
-    DefaultFunction::Read.get_str(),
+    DEFAULTS_FUNCTIONS[0].get_str(),
+    DEFAULTS_FUNCTIONS[1].get_str(),
 ];
 
 pub enum DefaultFunction {
@@ -32,10 +34,10 @@ impl DefaultFunction {
         }
     }
 
-    pub const fn run(&self) {
+    pub fn run(&self, tuple: &Tuple) -> Tuple {
         match self {
-            Self::Print => {}
-            Self::Read => {}
+            Self::Print => print(tuple),
+            Self::Read => read(),
         }
     }
 }
@@ -66,11 +68,12 @@ impl Clone for DefaultFunction {
 
 impl Copy for DefaultFunction {}
 
-fn print(string: &str) {
-    println!("{}", string);
+fn print(tuple: &Tuple) -> Tuple {
+    println!("{}", tuple);
+    return Tuple::new();
 }
 
-fn read(string: &str) -> String {
+fn read() -> Tuple {
     let mut input = String::new();
     std::io::stdin()
         .read_line(&mut input)
@@ -80,5 +83,8 @@ fn read(string: &str) -> String {
         .trim_end_matches(|ch| ch == 13 as char || ch == 10 as char)
         .to_string();
 
-    return input;
+    let mut tuple = Tuple::new();
+    tuple.table.set_string("°0", input);
+
+    return tuple;
 }

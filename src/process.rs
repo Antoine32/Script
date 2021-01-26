@@ -1,8 +1,11 @@
+use crate::default_fn::*;
+use crate::function::*;
 use crate::instruction::*;
 use crate::instruction_fn::*;
 use crate::kind::*;
 use crate::operation::*;
 use crate::table::*;
+use crate::tuple::*;
 use crate::variable::*;
 use crate::vec_table::*;
 use std::collections::HashMap;
@@ -13,7 +16,6 @@ use crate::{eprint, eprintln};
 pub struct Process {
     pub table: Table,
     pub operations: Vec<(Intruction, Vec<String>)>,
-    pub functions: HashMap<String, usize>,
 }
 
 impl Process {
@@ -21,7 +23,6 @@ impl Process {
         Process {
             table: Table::new(),
             operations: Vec::new(),
-            functions: HashMap::new(),
         }
     }
 
@@ -109,6 +110,10 @@ impl Process {
         let mut entry_list: Vec<String> = Vec::new();
         let mut operator_order: Vec<Vec<usize>> = Vec::with_capacity(LEVELS_OF_PRIORITY);
         let mut functions: HashMap<String, usize> = HashMap::new();
+
+        for i in 0..(DEFAULTS_FUNCTIONS.len()) {
+            functions.insert(DEFAULTS_FUNCTIONS_STR[i].to_string(), i);
+        }
 
         let line_char: Vec<char> = line.chars().collect();
         let mut n: usize = 0;
@@ -249,7 +254,6 @@ impl Process {
             Process {
                 table: table,
                 operations: operations,
-                functions: functions,
             },
             to_print,
         )
@@ -282,7 +286,7 @@ impl Process {
         eprintln!("");
     }
 
-    pub fn run(&self, vec_table: &mut VecTable, pos: usize) {
+    pub fn run(&self, vec_table: &mut VecTable, pos: usize) -> Tuple {
         let mut this = self.clone();
 
         #[cfg(feature = "print")]
@@ -292,7 +296,7 @@ impl Process {
         eprintln!("\n{}\t: {}\t: {}\n", "name", "kind", "value");
 
         for j in pos..(this.operations.len()) {
-            let (instruction, names) = &this.operations[j];
+            let (instruction, names) = &mut this.operations[j];
             let mut vars: Vec<Variable> = Vec::with_capacity(names.len());
 
             for name in names.iter() {
@@ -387,23 +391,32 @@ impl Process {
                     less_equal(&vars[0], &vars[1], &names[0], &names[1], &mut this.table)
                 }
                 Intruction::GOTO => {
-                    let clone = this.clone();
-                    let mut sending = VecTable::new();
+                    vec_table.add_level();
+                    let name = names.remove(0);
 
-                    for i in 1..(names.len()) {
-                        assign(
-                            &vars[i],
-                            &format!("°{}°{}", i - 1, names[0]),
-                            &names[i],
-                            &mut this.table,
-                            &mut sending,
-                        );
-                    }
+                    let tuple = {
+                        if names.len() > 0 {
+                            Tuple::from(&names, &this.table)
+                        } else {
+                            Tuple::new()
+                        }
+                    };
 
-                    clone.run(&mut sending, this.get_function(&names[0]));
+                    let (var, level) = vec_table.get(&name).unwrap();
+                    var.get_function(&name, vec_table.get_level(level))
+                        .unwrap()
+                        .run(&tuple, self, vec_table);
                 }
                 Intruction::END => {
-                    break;
+                    if this.table.get(&names[0]).kind == Kind::Tuple {
+                        return this
+                            .table
+                            .get(&names[0])
+                            .get_tuple(&names[0], &this.table)
+                            .unwrap();
+                    } else {
+                        return Tuple::from(&names, &this.table);
+                    }
                 }
             }
         }
@@ -414,19 +427,16 @@ impl Process {
         vec_table.print_tables();
 
         eprintln!("\n---------------------------------------------------------------------\n");
-    }
 
-    pub fn get_function(&self, name: &str) -> usize {
-        return *self.functions.get(name).unwrap();
+        return Tuple::new();
     }
 }
 
 impl Clone for Process {
     fn clone(&self) -> Self {
-        Process {
+        Self {
             table: self.table.clone(),
             operations: self.operations.clone(),
-            functions: self.functions.clone(),
         }
     }
 }
@@ -436,7 +446,7 @@ fn remove(table: &mut Table, entry_list: &mut Vec<String>, pos: usize) {
     table.remove_entry(&name);
 }
 
-fn get_real_name(name: &str) -> &str {
+pub fn get_real_name(name: &str) -> &str {
     match name.find('°') {
         Some(n) => name.get(0..n).unwrap(),
         None => name,
@@ -550,6 +560,7 @@ fn convert(
                         }
                         Operator::And => operations.push((Intruction::AND, vec![name_a, name_b])),
                         Operator::Or => operations.push((Intruction::OR, vec![name_a, name_b])),
+                        Operator::Return => operations.push((Intruction::END, vec![name_b])),
                         _ => break,
                     },
                 }

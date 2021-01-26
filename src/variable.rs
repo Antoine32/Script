@@ -1,4 +1,5 @@
-use crate::{kind::*, table::*, Operator, OPERATORS};
+use crate::tuple::*;
+use crate::{function::*, kind::*, table::*, Operator, OPERATORS};
 use num::{BigInt, FromPrimitive, One, ToPrimitive, Zero};
 
 #[allow(unused_imports)]
@@ -43,6 +44,10 @@ impl Variable {
 
     pub fn new_function(pos: usize) -> Self {
         Variable::new(Kind::Function, pos)
+    }
+
+    pub fn new_tuple(pos: usize) -> Self {
+        Variable::new(Kind::Tuple, pos)
     }
 
     pub fn set(&mut self, kind: Kind, pos: usize) {
@@ -115,6 +120,20 @@ impl Variable {
         match self.kind {
             Kind::Operator => Ok(OPERATORS[self.pos]),
             _ => Err(self.get_err(entry, Kind::Operator)),
+        }
+    }
+
+    pub fn get_function(&self, entry: &str, table: &Table) -> Result<Function, String> {
+        match self.kind {
+            Kind::Operator => Ok(table.get_function(self.pos)),
+            _ => Err(self.get_err(entry, Kind::Function)),
+        }
+    }
+
+    pub fn get_tuple(&self, entry: &str, table: &Table) -> Result<Tuple, String> {
+        match self.kind {
+            Kind::Tuple => Ok(table.get_tuple(self.pos)),
+            _ => Err(self.get_err(entry, Kind::Tuple)),
         }
     }
 }

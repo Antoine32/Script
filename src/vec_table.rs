@@ -11,7 +11,7 @@ pub struct VecTable {
 
 impl VecTable {
     pub fn new() -> Self {
-        VecTable {
+        Self {
             tables: Vec::from([Table::new(), Table::new()]),
         }
     }
@@ -146,5 +146,13 @@ impl VecTable {
 
     pub fn get_level(&self, level: usize) -> &Table {
         &self.tables[level]
+    }
+}
+
+impl Clone for VecTable {
+    fn clone(&self) -> Self {
+        Self {
+            tables: self.tables.clone(),
+        }
     }
 }

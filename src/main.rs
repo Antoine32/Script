@@ -7,6 +7,7 @@ use std::time::{Duration, Instant};
 use std::{sync::mpsc::sync_channel, thread};
 
 mod default_fn;
+mod function;
 mod instruction;
 mod instruction_fn;
 mod kind;

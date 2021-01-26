@@ -1,7 +1,7 @@
 #[allow(unused_imports)]
 use crate::{eprint, eprintln};
 
-pub const OPERATORS: [Operator; 31] = [
+pub const OPERATORS: [Operator; 32] = [
     Operator::PowAsign,
     Operator::AddAsign,
     Operator::SubAsign,
@@ -33,40 +33,42 @@ pub const OPERATORS: [Operator; 31] = [
     Operator::PriorityIncrement,
     Operator::PriorityDecrement,
     Operator::Separator,
+    Operator::Return,
 ];
 
 pub const OPERATORS_STR: [&str; OPERATORS.len()] = [
-    Operator::PowAsign.get_str(),
-    Operator::AddAsign.get_str(),
-    Operator::SubAsign.get_str(),
-    Operator::MulAsign.get_str(),
-    Operator::DivAsign.get_str(),
-    Operator::ModAsign.get_str(),
-    Operator::BandAsign.get_str(),
-    Operator::BorAsign.get_str(),
-    Operator::XorAsign.get_str(),
-    Operator::Asign.get_str(),
-    Operator::And.get_str(),
-    Operator::Or.get_str(),
-    Operator::Pow.get_str(),
-    Operator::Mul.get_str(),
-    Operator::Div.get_str(),
-    Operator::Mod.get_str(),
-    Operator::Add.get_str(),
-    Operator::Sub.get_str(),
-    Operator::Band.get_str(),
-    Operator::Bor.get_str(),
-    Operator::Xor.get_str(),
-    Operator::Not.get_str(),
-    Operator::Greater.get_str(),
-    Operator::Lesser.get_str(),
-    Operator::Equal.get_str(),
-    Operator::GreaterEqual.get_str(),
-    Operator::LesserEqual.get_str(),
-    Operator::NotEqual.get_str(),
-    Operator::PriorityIncrement.get_str(),
-    Operator::PriorityDecrement.get_str(),
-    Operator::Separator.get_str(),
+    OPERATORS[0].get_str(),
+    OPERATORS[1].get_str(),
+    OPERATORS[2].get_str(),
+    OPERATORS[3].get_str(),
+    OPERATORS[4].get_str(),
+    OPERATORS[5].get_str(),
+    OPERATORS[6].get_str(),
+    OPERATORS[7].get_str(),
+    OPERATORS[8].get_str(),
+    OPERATORS[9].get_str(),
+    OPERATORS[10].get_str(),
+    OPERATORS[11].get_str(),
+    OPERATORS[12].get_str(),
+    OPERATORS[13].get_str(),
+    OPERATORS[14].get_str(),
+    OPERATORS[15].get_str(),
+    OPERATORS[16].get_str(),
+    OPERATORS[17].get_str(),
+    OPERATORS[18].get_str(),
+    OPERATORS[19].get_str(),
+    OPERATORS[20].get_str(),
+    OPERATORS[21].get_str(),
+    OPERATORS[22].get_str(),
+    OPERATORS[23].get_str(),
+    OPERATORS[24].get_str(),
+    OPERATORS[25].get_str(),
+    OPERATORS[26].get_str(),
+    OPERATORS[27].get_str(),
+    OPERATORS[28].get_str(),
+    OPERATORS[29].get_str(),
+    OPERATORS[30].get_str(),
+    OPERATORS[31].get_str(),
 ];
 
 pub enum Operator {
@@ -101,22 +103,24 @@ pub enum Operator {
     PriorityIncrement,
     PriorityDecrement,
     Separator,
+    Return,
 }
 
 // Priority
-pub const P_NOT: usize = 10; // !
-pub const P_POW: usize = 9; // **
-pub const P_MUL_DIV_MOD: usize = 8; // * / %
-pub const P_ADD_SUB: usize = 7; // + -
-pub const P_BIT_AND: usize = 6; // &
-pub const P_XOR: usize = 5; // ^
-pub const P_BIT_OR: usize = 4; // |
-pub const P_COMPARAISON: usize = 3; // == != < > <= >=
-pub const P_AND: usize = 2; // &&
-pub const P_OR: usize = 1; // ||
-pub const P_ASSIGNEMENT: usize = 0; // = += -= *= /= %= &= |= ^= **=
+pub const P_NOT: usize = 11; // !
+pub const P_POW: usize = 10; // **
+pub const P_MUL_DIV_MOD: usize = 9; // * / %
+pub const P_ADD_SUB: usize = 8; // + -
+pub const P_BIT_AND: usize = 7; // &
+pub const P_XOR: usize = 6; // ^
+pub const P_BIT_OR: usize = 5; // |
+pub const P_COMPARAISON: usize = 4; // == != < > <= >=
+pub const P_AND: usize = 3; // &&
+pub const P_OR: usize = 2; // ||
+pub const P_ASSIGNEMENT: usize = 1; // = += -= *= /= %= &= |= ^= **=
+pub const P_RETURN: usize = 0; // return
 
-pub const LEVELS_OF_PRIORITY: usize = 11;
+pub const LEVELS_OF_PRIORITY: usize = 12;
 
 impl Operator {
     pub fn from_string(string: &str) -> Option<Self> {
@@ -162,6 +166,7 @@ impl Operator {
             Self::PriorityIncrement => 0,
             Self::PriorityDecrement => 0,
             Self::Separator => 0,
+            Self::Return => P_RETURN,
         }
     }
 
@@ -198,6 +203,7 @@ impl Operator {
             Self::PriorityIncrement => "(",
             Self::PriorityDecrement => ")",
             Self::Separator => ",",
+            Self::Return => "return",
         }
     }
 
@@ -252,6 +258,7 @@ impl std::cmp::PartialEq for Operator {
             Self::PriorityIncrement => matches!(other, Self::PriorityIncrement),
             Self::PriorityDecrement => matches!(other, Self::PriorityDecrement),
             Self::Separator => matches!(other, Self::Separator),
+            Self::Return => matches!(other, Self::Return),
         }
     }
 }
@@ -290,6 +297,7 @@ impl Clone for Operator {
             Self::PriorityIncrement => Self::PriorityIncrement,
             Self::PriorityDecrement => Self::PriorityDecrement,
             Self::Separator => Self::Separator,
+            Self::Return => Self::Return,
         }
     }
 }
