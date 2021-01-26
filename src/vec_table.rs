@@ -1,4 +1,6 @@
+use crate::function::*;
 use crate::table::*;
+use crate::tuple::*;
 use crate::variable::*;
 use num::BigInt;
 
@@ -11,7 +13,7 @@ pub struct VecTable {
 
 impl VecTable {
     pub fn new() -> Self {
-        VecTable {
+        Self {
             tables: Vec::from([Table::new(), Table::new()]),
         }
     }
@@ -19,19 +21,20 @@ impl VecTable {
     // debug feature
     #[cfg(feature = "print")]
     pub fn print_tables(&self) {
-        eprintln!("{}\t: {}\t: {}\t: {}", "table", "name", "kind", "value");
+        eprintln!("{}\t{}\t: {}\t: {}", "table", "name", "kind", "value");
 
         for i in 0..(self.tables.len()) {
-            eprintln!("\n#{}", i);
+            eprint!("\n#{}", i);
+            self.tables[i].print_variables("\t");
 
-            for (name, var) in self.tables[i].variables.iter() {
+            /*for (name, var) in self.tables[i].variables.iter() {
                 eprintln!(
                     "\t: {}\t: {}\t: |{}|",
                     name,
                     var.kind,
                     var.get_string(name, &self.tables[i]).unwrap()
                 );
-            }
+            }*/
         }
     }
 
@@ -75,12 +78,20 @@ impl VecTable {
         self.tables[level].set_bool(entry, value);
     }
 
+    pub fn set_tuple_specified(&mut self, level: usize, entry: &str, value: Tuple) {
+        self.tables[level].set_tuple(entry, value);
+    }
+
     pub fn set_null_specified(&mut self, level: usize, entry: &str) {
         self.tables[level].set_null(entry);
     }
 
+    pub fn set_function_specified(&mut self, level: usize, entry: &str, value: Function) {
+        self.tables[level].set_function(entry, value);
+    }
+
     pub fn set_string(&mut self, entry: &str, value: String) {
-        for i in 0..(self.tables.len()) {
+        for i in (0..(self.tables.len())).rev() {
             if self.tables[i].contains(entry) {
                 self.set_string_specified(i, entry, value);
                 return;
@@ -91,7 +102,7 @@ impl VecTable {
     }
 
     pub fn set_number(&mut self, entry: &str, value: f64) {
-        for i in 0..(self.tables.len()) {
+        for i in (0..(self.tables.len())).rev() {
             if self.tables[i].contains(entry) {
                 self.set_number_specified(i, entry, value);
                 return;
@@ -102,7 +113,7 @@ impl VecTable {
     }
 
     pub fn set_bigint(&mut self, entry: &str, value: BigInt) {
-        for i in 0..(self.tables.len()) {
+        for i in (0..(self.tables.len())).rev() {
             if self.tables[i].contains(entry) {
                 self.set_bigint_specified(i, entry, value);
                 return;
@@ -113,7 +124,7 @@ impl VecTable {
     }
 
     pub fn set_bool(&mut self, entry: &str, value: bool) {
-        for i in 0..(self.tables.len()) {
+        for i in (0..(self.tables.len())).rev() {
             if self.tables[i].contains(entry) {
                 self.set_bool_specified(i, entry, value);
                 return;
@@ -123,8 +134,19 @@ impl VecTable {
         self.set_bool_specified(self.tables.len() - 1, entry, value);
     }
 
+    pub fn set_tuple(&mut self, entry: &str, value: Tuple) {
+        for i in (0..(self.tables.len())).rev() {
+            if self.tables[i].contains(entry) {
+                self.set_tuple_specified(i, entry, value);
+                return;
+            }
+        }
+
+        self.set_tuple_specified(self.tables.len() - 1, entry, value);
+    }
+
     pub fn set_null(&mut self, entry: &str) {
-        for i in 0..(self.tables.len()) {
+        for i in (0..(self.tables.len())).rev() {
             if self.tables[i].contains(entry) {
                 self.set_null_specified(i, entry);
                 return;
@@ -134,17 +156,39 @@ impl VecTable {
         self.set_null_specified(self.tables.len() - 1, entry);
     }
 
-    pub fn get(&self, entry: &str) -> Option<(&Variable, usize)> {
+    pub fn set_function(&mut self, entry: &str, value: Function) {
         for i in (0..(self.tables.len())).rev() {
             if self.tables[i].contains(entry) {
-                return Some((self.tables[i].get(entry), i));
+                self.set_function_specified(i, entry, value);
+                return;
+            }
+        }
+
+        self.set_function_specified(self.tables.len() - 1, entry, value);
+    }
+
+    pub fn get(&mut self, entry: &str) -> Option<(&mut Table, Variable)> {
+        for i in (0..(self.tables.len())).rev() {
+            if self.tables[i].contains(entry) {
+                let level = self.get_level(i);
+                let var = level.get(entry).clone();
+
+                return Some((level, var));
             }
         }
 
         None
     }
 
-    pub fn get_level(&self, level: usize) -> &Table {
-        &self.tables[level]
+    pub fn get_level(&mut self, level: usize) -> &mut Table {
+        &mut self.tables[level]
+    }
+}
+
+impl Clone for VecTable {
+    fn clone(&self) -> Self {
+        Self {
+            tables: self.tables.clone(),
+        }
     }
 }

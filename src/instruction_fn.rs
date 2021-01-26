@@ -20,7 +20,8 @@ pub fn assign(
         Kind::BigInt => vec_table.set_bigint(name_a, var_b.get_bigint(name_b, table).unwrap()),
         Kind::Bool => vec_table.set_bool(name_a, var_b.get_bool(name_b, table).unwrap()),
         Kind::Null => vec_table.set_null(name_a),
-        _ => {}
+        Kind::Tuple => vec_table.set_tuple(name_a, var_b.get_tuple(name_b, table).unwrap()),
+        Kind::Operator | Kind::Function => {}
     }
 }
 
@@ -242,9 +243,12 @@ fn local_equal(
             Kind::Bool => {
                 var_a.get_bool(name_a, table).unwrap() == var_b.get_bool(name_b, table).unwrap()
             }
-            Kind::Operator => var_a.pos == var_b.pos,
+            Kind::Operator => false,
             Kind::Null => true,
             Kind::Function => false,
+            Kind::Tuple => {
+                var_a.get_tuple(name_a, table).unwrap() == var_b.get_tuple(name_b, table).unwrap()
+            }
         };
     }
 

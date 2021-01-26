@@ -7,6 +7,7 @@ use std::time::{Duration, Instant};
 use std::{sync::mpsc::sync_channel, thread};
 
 mod default_fn;
+mod function;
 mod instruction;
 mod instruction_fn;
 mod kind;
@@ -18,9 +19,14 @@ mod variable;
 mod vec_free;
 mod vec_table;
 
+use default_fn::*;
+use function::*;
 use operation::*;
 use process::*;
 use vec_table::*;
+
+pub const CHAR_SEP_NAME: char = 0 as char;
+// format!("{}", CHAR_SEP_NAME).as_str()
 
 /*
    To print debug info use
@@ -66,7 +72,7 @@ pub fn usize_to_string(mut num: usize) -> String {
 
         match std::char::from_u32(fit) {
             Some(ch) => string.push(ch),
-            None => string.push(0 as char),
+            None => string.push(CHAR_SEP_NAME),
         }
     }
 
@@ -258,6 +264,13 @@ fn time_taken(elapsed: Duration) -> String {
 
 fn main() {
     let mut vec_table = VecTable::new();
+
+    for i in 0..(DEFAULTS_FUNCTIONS.len()) {
+        vec_table.set_function(
+            DEFAULTS_FUNCTIONS_STR[i],
+            Function::new(true, i, &Vec::from(DEFAULTS_FUNCTIONS_ARGS[i])),
+        );
+    }
 
     let timer_a = Instant::now();
 

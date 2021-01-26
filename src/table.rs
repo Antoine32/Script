@@ -1,8 +1,10 @@
-use crate::decode_string;
+use crate::function::*;
 use crate::kind::*;
 use crate::operation::*;
+use crate::tuple::*;
 use crate::variable::*;
 use crate::vec_free::*;
+use crate::{decode_string, string_to_usize, CHAR_SEP_NAME};
 use num::BigInt;
 use std::collections::HashMap;
 
@@ -16,7 +18,8 @@ pub struct Table {
     pub vec_number: VecFree<f64>,
     pub vec_bigint: VecFree<BigInt>,
     pub vec_bool: VecFree<bool>,
-    pub vec_function: VecFree<Vec<String>>,
+    pub vec_function: VecFree<Function>,
+    pub vec_tuple: VecFree<Tuple>,
     //
     pub null: Variable,
 }
@@ -31,6 +34,7 @@ impl Table {
             vec_bigint: VecFree::new(),
             vec_bool: VecFree::new(),
             vec_function: VecFree::new(),
+            vec_tuple: VecFree::new(),
             //
             null: Variable::new_null(0),
         }
@@ -38,12 +42,13 @@ impl Table {
 
     // debug feature
     #[cfg(feature = "print")]
-    pub fn print_variables(&self) {
-        eprintln!("\n{}\t: {}\t: {}\n", "name", "kind", "value");
+    pub fn print_variables(&self, start_with: &str) {
+        eprintln!("{}{}\t: {}\t: {}\n", start_with, "name", "kind", "value");
 
         for (name, var) in self.variables.iter() {
             eprintln!(
-                "{}\t: {}\t: |{}|",
+                "{}{}\t: {}\t: |{}|",
+                start_with,
                 name,
                 var.kind,
                 var.get_string(name, self).unwrap()
@@ -71,6 +76,9 @@ impl Table {
                 Kind::Function => {
                     var.pos = self.vec_function.add(other.vec_function[var.pos].clone());
                 }
+                Kind::Tuple => {
+                    var.pos = self.vec_tuple.add(other.vec_tuple[var.pos].clone());
+                }
             }
 
             self.variables.insert(entry, var);
@@ -87,9 +95,20 @@ impl Table {
                 self.set_operator(entry, Operator::from_string(raw_value).unwrap().get_pos())
             }
             Kind::Null => self.set_null(entry),
-            Kind::Function => self.set_function(
+            Kind::Function => {
+                let (pos, arguments) = raw_value.split_at(raw_value.find(CHAR_SEP_NAME).unwrap());
+
+                let pos = string_to_usize(pos);
+                let arguments: Vec<&str> = arguments.split_terminator(CHAR_SEP_NAME).collect();
+
+                self.set_function(entry, Function::new(false, pos, &arguments))
+            }
+            Kind::Tuple => self.set_tuple(
                 entry,
-                raw_value.split(',').map(|s| s.trim().to_string()).collect(), // change to implementation with process_line
+                Tuple::from(
+                    &raw_value.split(CHAR_SEP_NAME).map(|s| s.trim()).collect(),
+                    self,
+                ),
             ),
         }
     }
@@ -113,7 +132,8 @@ impl Table {
                     Kind::BigInt => Variable::new_bigint(pos),
                     Kind::Bool => Variable::new_bool(pos),
                     Kind::Function => Variable::new_function(pos),
-                    _ => Variable::new_null(pos),
+                    Kind::Tuple => Variable::new_tuple(pos),
+                    Kind::Null | Kind::Operator => Variable::new_null(pos),
                 };
 
                 self.variables.insert(entry.to_string(), var);
@@ -179,13 +199,23 @@ impl Table {
         self.remove_entry(entry);
     }
 
-    pub fn set_function(&mut self, entry: &str, value: Vec<String>) {
+    pub fn set_function(&mut self, entry: &str, value: Function) {
         let pos_a = self.vec_function.add(value.clone());
         let pos_b = self.set(entry, pos_a, Kind::Function);
 
         if pos_a != pos_b {
             self.vec_function.remove(pos_a);
             self.vec_function[pos_b] = value;
+        }
+    }
+
+    pub fn set_tuple(&mut self, entry: &str, value: Tuple) {
+        let pos_a = self.vec_tuple.add(value.clone());
+        let pos_b = self.set(entry, pos_a, Kind::Tuple);
+
+        if pos_a != pos_b {
+            self.vec_tuple.remove(pos_a);
+            self.vec_tuple[pos_b] = value;
         }
     }
 
@@ -243,6 +273,14 @@ impl Table {
         self.vec_bool[pos]
     }
 
+    pub fn get_function(&self, pos: usize) -> Function {
+        self.vec_function[pos].clone()
+    }
+
+    pub fn get_tuple(&self, pos: usize) -> Tuple {
+        self.vec_tuple[pos].clone()
+    }
+
     pub fn get_mut_string(&mut self, pos: usize) -> &mut String {
         &mut self.vec_string[pos]
     }
@@ -284,6 +322,9 @@ impl Table {
             Kind::Function => {
                 self.vec_function.remove(pos);
             }
+            Kind::Tuple => {
+                self.vec_tuple.remove(pos);
+            }
             _ => {}
         }
     }
@@ -305,6 +346,7 @@ impl Clone for Table {
             vec_bigint: self.vec_bigint.clone(),
             vec_bool: self.vec_bool.clone(),
             vec_function: self.vec_function.clone(),
+            vec_tuple: self.vec_tuple.clone(),
             //
             null: Variable::new_null(0),
         }

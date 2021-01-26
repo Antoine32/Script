@@ -1,11 +1,13 @@
+use crate::function::*;
 use crate::instruction::*;
 use crate::instruction_fn::*;
 use crate::kind::*;
 use crate::operation::*;
 use crate::table::*;
+use crate::tuple::*;
 use crate::variable::*;
 use crate::vec_table::*;
-use std::collections::HashMap;
+use crate::CHAR_SEP_NAME;
 
 #[allow(unused_imports)]
 use crate::{eprint, eprintln};
@@ -13,7 +15,6 @@ use crate::{eprint, eprintln};
 pub struct Process {
     pub table: Table,
     pub operations: Vec<(Intruction, Vec<String>)>,
-    pub functions: HashMap<String, usize>,
 }
 
 impl Process {
@@ -21,7 +22,6 @@ impl Process {
         Process {
             table: Table::new(),
             operations: Vec::new(),
-            functions: HashMap::new(),
         }
     }
 
@@ -60,7 +60,7 @@ impl Process {
                 let i = entry_list.len();
 
                 let name = format!(
-                    "{}°{}°{}",
+                    "{}{}{}{}{}",
                     {
                         match kind {
                             Kind::Null => raw_value,
@@ -70,7 +70,9 @@ impl Process {
                             _ => "",
                         }
                     },
+                    CHAR_SEP_NAME,
                     entry_list.len(),
+                    CHAR_SEP_NAME,
                     line_num
                 );
 
@@ -108,7 +110,6 @@ impl Process {
         let mut table = Table::new();
         let mut entry_list: Vec<String> = Vec::new();
         let mut operator_order: Vec<Vec<usize>> = Vec::with_capacity(LEVELS_OF_PRIORITY);
-        let mut functions: HashMap<String, usize> = HashMap::new();
 
         let line_char: Vec<char> = line.chars().collect();
         let mut n: usize = 0;
@@ -249,7 +250,6 @@ impl Process {
             Process {
                 table: table,
                 operations: operations,
-                functions: functions,
             },
             to_print,
         )
@@ -257,7 +257,7 @@ impl Process {
 
     #[cfg(feature = "print")]
     fn print_var(&self, name: &str) {
-        if name != "°" {
+        if name != format!("{}", CHAR_SEP_NAME).as_str() {
             let var = self.table.get(name);
 
             eprint!(
@@ -282,17 +282,19 @@ impl Process {
         eprintln!("");
     }
 
-    pub fn run(&self, vec_table: &mut VecTable, pos: usize) {
+    pub fn run(&self, vec_table: &mut VecTable, pos: usize) -> Tuple {
         let mut this = self.clone();
-
-        #[cfg(feature = "print")]
-        let mut i = 0;
 
         eprintln!("level: {}", vec_table.len() - 1);
         eprintln!("\n{}\t: {}\t: {}\n", "name", "kind", "value");
 
         for j in pos..(this.operations.len()) {
-            let (instruction, names) = &this.operations[j];
+            #[cfg(feature = "print")]
+            {
+                this.print_line(j);
+            }
+
+            let (instruction, names) = &mut this.operations[j];
             let mut vars: Vec<Variable> = Vec::with_capacity(names.len());
 
             for name in names.iter() {
@@ -300,39 +302,31 @@ impl Process {
                     let real_name = get_real_name(name);
 
                     match vec_table.get(real_name) {
-                        Some((var, level)) => match var.kind {
-                            Kind::String => this.table.set_string(
-                                name,
-                                var.get_string(real_name, vec_table.get_level(level))
-                                    .unwrap(),
-                            ),
-                            Kind::Number => this.table.set_number(
-                                name,
-                                var.get_number(real_name, vec_table.get_level(level))
-                                    .unwrap(),
-                            ),
-                            Kind::BigInt => this.table.set_bigint(
-                                name,
-                                var.get_bigint(real_name, vec_table.get_level(level))
-                                    .unwrap(),
-                            ),
-                            Kind::Bool => this.table.set_bool(
-                                name,
-                                var.get_bool(real_name, vec_table.get_level(level)).unwrap(),
-                            ),
-                            _ => {}
+                        Some((level, var)) => match var.kind {
+                            Kind::String => this
+                                .table
+                                .set_string(name, var.get_string(real_name, level).unwrap()),
+                            Kind::Number => this
+                                .table
+                                .set_number(name, var.get_number(real_name, level).unwrap()),
+                            Kind::BigInt => this
+                                .table
+                                .set_bigint(name, var.get_bigint(real_name, level).unwrap()),
+                            Kind::Bool => this
+                                .table
+                                .set_bool(name, var.get_bool(real_name, level).unwrap()),
+                            Kind::Tuple => this
+                                .table
+                                .set_tuple(name, var.get_tuple(real_name, level).unwrap()),
+                            Kind::Null => this.table.set_null(name),
+                            Kind::Operator => {}
+                            Kind::Function => {}
                         },
                         None => {}
                     }
                 }
 
                 vars.push(this.table.get(name).clone());
-            }
-
-            #[cfg(feature = "print")]
-            {
-                this.print_line(i);
-                i += 1;
             }
 
             match *instruction {
@@ -387,23 +381,43 @@ impl Process {
                     less_equal(&vars[0], &vars[1], &names[0], &names[1], &mut this.table)
                 }
                 Intruction::GOTO => {
-                    let clone = this.clone();
-                    let mut sending = VecTable::new();
+                    let name = names.remove(0);
 
-                    for i in 1..(names.len()) {
-                        assign(
-                            &vars[i],
-                            &format!("°{}°{}", i - 1, names[0]),
-                            &names[i],
-                            &mut this.table,
-                            &mut sending,
-                        );
+                    let tuple = {
+                        if names.len() > 0 {
+                            Tuple::from(&names.iter().map(|n| n.as_str()).collect(), &this.table)
+                        } else {
+                            Tuple::new()
+                        }
+                    };
+
+                    match vec_table.get(&name) {
+                        Some((level, var)) => {
+                            var.get_function(&name, level)
+                                .unwrap()
+                                .run(&tuple, self, vec_table);
+                        }
+                        None => {}
                     }
-
-                    clone.run(&mut sending, this.get_function(&names[0]));
                 }
                 Intruction::END => {
-                    break;
+                    if this.table.get(&names[0]).kind == Kind::Tuple {
+                        return this
+                            .table
+                            .get(&names[0])
+                            .get_tuple(&names[0], &this.table)
+                            .unwrap();
+                    } else {
+                        return Tuple::from(
+                            &names.iter().map(|n| n.as_str()).collect(),
+                            &this.table,
+                        );
+                    }
+                }
+                Intruction::TUP => {
+                    let mut tuple = vars[0].get_tuple(&names[0], &this.table).unwrap();
+                    tuple.push(&vars[1], &names[1], &this.table);
+                    this.table.set_tuple(&names[0], tuple);
                 }
             }
         }
@@ -414,19 +428,16 @@ impl Process {
         vec_table.print_tables();
 
         eprintln!("\n---------------------------------------------------------------------\n");
-    }
 
-    pub fn get_function(&self, name: &str) -> usize {
-        return *self.functions.get(name).unwrap();
+        return Tuple::new();
     }
 }
 
 impl Clone for Process {
     fn clone(&self) -> Self {
-        Process {
+        Self {
             table: self.table.clone(),
             operations: self.operations.clone(),
-            functions: self.functions.clone(),
         }
     }
 }
@@ -436,8 +447,8 @@ fn remove(table: &mut Table, entry_list: &mut Vec<String>, pos: usize) {
     table.remove_entry(&name);
 }
 
-fn get_real_name(name: &str) -> &str {
-    match name.find('°') {
+pub fn get_real_name(name: &str) -> &str {
+    match name.find(CHAR_SEP_NAME) {
         Some(n) => name.get(0..n).unwrap(),
         None => name,
     }
@@ -451,8 +462,8 @@ fn convert(
     let mut operations: Vec<(Intruction, Vec<String>)> = Vec::new();
 
     if operator_order.len() > 0 {
-        let mut name_a = String::from("°");
-        let mut name_b = String::from("°");
+        let mut name_a = String::from(CHAR_SEP_NAME);
+        let mut name_b = String::from(CHAR_SEP_NAME);
 
         let mut delete: (bool, bool);
 
@@ -550,12 +561,16 @@ fn convert(
                         }
                         Operator::And => operations.push((Intruction::AND, vec![name_a, name_b])),
                         Operator::Or => operations.push((Intruction::OR, vec![name_a, name_b])),
+                        Operator::Return => operations.push((Intruction::END, vec![name_b])),
+                        Operator::Separator => {
+                            operations.push((Intruction::TUP, vec![name_a, name_b]))
+                        }
                         _ => break,
                     },
                 }
 
-                name_a = String::from("°");
-                name_b = String::from("°");
+                name_a = String::from(CHAR_SEP_NAME);
+                name_b = String::from(CHAR_SEP_NAME);
 
                 if delete.1 {
                     remove(&mut table, entry_list, operator_position + 1);

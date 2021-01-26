@@ -1,3 +1,7 @@
+use crate::tuple::*;
+use crate::vec_table::*;
+use crate::CHAR_SEP_NAME;
+
 #[allow(unused_imports)]
 use crate::{eprint, eprintln};
 
@@ -5,8 +9,13 @@ pub const DEFAULTS_FUNCTIONS: [DefaultFunction; 2] =
     [DefaultFunction::Print, DefaultFunction::Read];
 
 pub const DEFAULTS_FUNCTIONS_STR: [&str; DEFAULTS_FUNCTIONS.len()] = [
-    DefaultFunction::Print.get_str(),
-    DefaultFunction::Read.get_str(),
+    DEFAULTS_FUNCTIONS[0].get_str(),
+    DEFAULTS_FUNCTIONS[1].get_str(),
+];
+
+pub const DEFAULTS_FUNCTIONS_ARGS: [&[&str]; DEFAULTS_FUNCTIONS.len()] = [
+    DEFAULTS_FUNCTIONS[0].get_arguments(),
+    DEFAULTS_FUNCTIONS[1].get_arguments(),
 ];
 
 pub enum DefaultFunction {
@@ -27,15 +36,22 @@ impl DefaultFunction {
 
     pub const fn get_str(&self) -> &str {
         match self {
-            Self::Print => "print",
-            Self::Read => "read",
+            Self::Print => "print()",
+            Self::Read => "read()",
         }
     }
 
-    pub const fn run(&self) {
+    pub const fn get_arguments(&self) -> &[&str] {
         match self {
-            Self::Print => {}
-            Self::Read => {}
+            Self::Print => &PRINT_ARGS,
+            Self::Read => &READ_ARGS,
+        }
+    }
+
+    pub fn run(&self, tuple: &mut VecTable) -> Tuple {
+        match self {
+            Self::Print => print(tuple),
+            Self::Read => read(),
         }
     }
 }
@@ -66,11 +82,21 @@ impl Clone for DefaultFunction {
 
 impl Copy for DefaultFunction {}
 
-fn print(string: &str) {
-    println!("{}", string);
+const PRINT_TEXT: &str = "text";
+const PRINT_ARGS: [&str; 1] = [PRINT_TEXT];
+
+fn print(vec_table: &mut VecTable) -> Tuple {
+    match vec_table.get(PRINT_TEXT) {
+        Some((level, var)) => println!("{}", var.get_string(PRINT_TEXT, level).unwrap()),
+        None => println!(""),
+    }
+
+    return Tuple::new();
 }
 
-fn read(string: &str) -> String {
+const READ_ARGS: [&str; 0] = [];
+
+fn read() -> Tuple {
     let mut input = String::new();
     std::io::stdin()
         .read_line(&mut input)
@@ -80,5 +106,10 @@ fn read(string: &str) -> String {
         .trim_end_matches(|ch| ch == 13 as char || ch == 10 as char)
         .to_string();
 
-    return input;
+    let mut tuple = Tuple::new();
+    tuple
+        .table
+        .set_string(&format!("{}0", CHAR_SEP_NAME), input);
+
+    return tuple;
 }

@@ -1,6 +1,8 @@
+use crate::get_real_name;
 use crate::kind::*;
 use crate::table::*;
 use crate::variable::*;
+use crate::CHAR_SEP_NAME;
 
 #[allow(unused_imports)]
 use crate::{eprint, eprintln};
@@ -12,10 +14,69 @@ pub struct Tuple {
 
 impl Tuple {
     pub fn new() -> Self {
-        Tuple {
+        Self {
             table: Table::new(),
             order: Vec::new(),
         }
+    }
+
+    pub fn init(names: &Vec<&str>) -> Self {
+        let mut tuple = Self::new();
+
+        for name in names.iter() {
+            tuple.push_null(name);
+        }
+
+        return tuple;
+    }
+
+    pub fn from(names: &Vec<&str>, table: &Table) -> Self {
+        let mut tuple = Self::new();
+
+        for name in names.iter() {
+            tuple.push(table.get(name), name, table);
+        }
+
+        return tuple;
+    }
+
+    pub fn push_null(&mut self, name: &str) {
+        let name = format!("{}{}{}", get_real_name(name), CHAR_SEP_NAME, self.len());
+        self.table.set_null(&name);
+        self.order.push(name);
+    }
+
+    pub fn push(&mut self, var: &Variable, name: &str, table: &Table) {
+        let name = format!("{}{}{}", get_real_name(name), CHAR_SEP_NAME, self.len());
+
+        match var.kind {
+            Kind::String => {
+                self.table
+                    .set_string(&name, table.vec_string[var.pos].clone());
+            }
+            Kind::Number => {
+                self.table
+                    .set_number(&name, table.vec_number[var.pos].clone());
+            }
+            Kind::BigInt => {
+                self.table
+                    .set_bigint(&name, table.vec_bigint[var.pos].clone());
+            }
+            Kind::Bool => {
+                self.table.set_bool(&name, table.vec_bool[var.pos].clone());
+            }
+            Kind::Tuple => {
+                self.table
+                    .set_tuple(&name, table.vec_tuple[var.pos].clone());
+            }
+            Kind::Operator => {}
+            Kind::Null => {
+                self.table.set_null(&name);
+            }
+            Kind::Function => {}
+        }
+
+        self.order.push(name);
     }
 
     pub fn get_name(&self, pos: usize) -> &str {
@@ -41,7 +102,13 @@ impl std::fmt::Display for Tuple {
 
         for i in 0..(self.len()) {
             let name = &self.order[i];
-            string.push_str(&self.table.get(name).get_string(name, &self.table).unwrap());
+            let var = self.table.get(name);
+
+            if var.kind == Kind::Null {
+                string.push_str(get_real_name(name));
+            } else {
+                string.push_str(&var.get_string(name, &self.table).unwrap());
+            }
 
             if i + 1 < self.len() {
                 string.push_str(", ");
@@ -99,6 +166,13 @@ impl std::cmp::PartialEq for Tuple {
                             return false;
                         }
                         Kind::Null => {}
+                        Kind::Tuple => {
+                            if var_self.get_tuple(name_self, &self.table).unwrap()
+                                != var_other.get_tuple(name_other, &self.table).unwrap()
+                            {
+                                return false;
+                            }
+                        }
                     }
                 } else {
                     return false;

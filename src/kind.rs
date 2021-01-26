@@ -11,6 +11,7 @@ pub enum Kind {
     Operator,
     Null,
     Function,
+    Tuple,
 }
 
 impl std::fmt::Display for Kind {
@@ -23,6 +24,7 @@ impl std::fmt::Display for Kind {
             Self::Operator => write!(f, "operator"),
             Self::Null => write!(f, "null"),
             Self::Function => write!(f, "function"),
+            Self::Tuple => write!(f, "tuple"),
         }
     }
 }
@@ -37,6 +39,7 @@ impl std::cmp::PartialEq for Kind {
             Self::Operator => matches!(other, Self::Operator),
             Self::Null => matches!(other, Self::Null),
             Self::Function => matches!(other, Self::Function),
+            Self::Tuple => matches!(other, Self::Tuple),
         }
     }
 }
@@ -51,6 +54,7 @@ impl Clone for Kind {
             Self::Operator => Self::Operator,
             Self::Null => Self::Null,
             Self::Function => Self::Function,
+            Self::Tuple => Self::Tuple,
         }
     }
 }

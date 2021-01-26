@@ -1,4 +1,5 @@
-use crate::{kind::*, table::*, Operator, OPERATORS};
+use crate::tuple::*;
+use crate::{function::*, kind::*, table::*, Operator, OPERATORS};
 use num::{BigInt, FromPrimitive, One, ToPrimitive, Zero};
 
 #[allow(unused_imports)]
@@ -45,6 +46,10 @@ impl Variable {
         Variable::new(Kind::Function, pos)
     }
 
+    pub fn new_tuple(pos: usize) -> Self {
+        Variable::new(Kind::Tuple, pos)
+    }
+
     pub fn set(&mut self, kind: Kind, pos: usize) {
         self.kind = kind;
         self.pos = pos;
@@ -64,8 +69,21 @@ impl Variable {
             Kind::BigInt => Ok(table.get_bigint(self.pos).to_string()),
             Kind::Bool => Ok(table.get_bool(self.pos).to_string()),
             Kind::Operator => Ok(OPERATORS[self.pos].to_string()),
-            Kind::Null => Ok("null".to_string()),
-            _ => Err(self.get_err(entry, Kind::String)), // here in case I need it later and for consistency
+            Kind::Null => Ok("".to_string()),
+            Kind::Function => Ok(format!(
+                "{}{}",
+                entry.get(..(entry.len() - 2)).unwrap(),
+                table.get_function(self.pos).arguments
+            )),
+            Kind::Tuple => {
+                let tuple = table.get_tuple(self.pos);
+
+                if tuple.len() <= 1 {
+                    tuple.get(0).get_string(tuple.get_name(0), &tuple.table)
+                } else {
+                    Ok(format!("{}", table.get_tuple(self.pos)))
+                }
+            } //_ => Err(self.get_err(entry, Kind::String)), // here in case I need it later and for consistency
         }
     }
 
@@ -81,6 +99,15 @@ impl Variable {
                 }
             }),
             Kind::Null => Ok(0.0),
+            Kind::Tuple => {
+                let tuple = table.get_tuple(self.pos);
+
+                if tuple.len() == 1 {
+                    tuple.get(0).get_number(tuple.get_name(0), &tuple.table)
+                } else {
+                    Err(self.get_err(entry, Kind::Bool))
+                }
+            }
             _ => Err(self.get_err(entry, Kind::Number)),
         }
     }
@@ -97,6 +124,15 @@ impl Variable {
                 }
             }),
             Kind::Null => Ok(BigInt::zero()),
+            Kind::Tuple => {
+                let tuple = table.get_tuple(self.pos);
+
+                if tuple.len() == 1 {
+                    tuple.get(0).get_bigint(tuple.get_name(0), &tuple.table)
+                } else {
+                    Err(self.get_err(entry, Kind::Bool))
+                }
+            }
             _ => Err(self.get_err(entry, Kind::BigInt)),
         }
     }
@@ -107,6 +143,15 @@ impl Variable {
             Kind::BigInt => Ok(table.get_bigint(self.pos) >= BigInt::one()),
             Kind::Bool => Ok(table.get_bool(self.pos)),
             Kind::Null => Ok(false),
+            Kind::Tuple => {
+                let tuple = table.get_tuple(self.pos);
+
+                if tuple.len() == 1 {
+                    tuple.get(0).get_bool(tuple.get_name(0), &tuple.table)
+                } else {
+                    Err(self.get_err(entry, Kind::Bool))
+                }
+            }
             _ => Err(self.get_err(entry, Kind::Bool)),
         }
     }
@@ -115,6 +160,20 @@ impl Variable {
         match self.kind {
             Kind::Operator => Ok(OPERATORS[self.pos]),
             _ => Err(self.get_err(entry, Kind::Operator)),
+        }
+    }
+
+    pub fn get_function(&self, entry: &str, table: &Table) -> Result<Function, String> {
+        match self.kind {
+            Kind::Operator => Ok(table.get_function(self.pos)),
+            _ => Err(self.get_err(entry, Kind::Function)),
+        }
+    }
+
+    pub fn get_tuple(&self, entry: &str, table: &Table) -> Result<Tuple, String> {
+        match self.kind {
+            Kind::Tuple => Ok(table.get_tuple(self.pos)),
+            _ => Ok(Tuple::from(&vec![entry], table)), //_ => Err(self.get_err(entry, Kind::Tuple)),
         }
     }
 }
