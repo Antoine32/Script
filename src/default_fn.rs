@@ -1,4 +1,4 @@
-use crate::tuple::*;
+use crate::*;
 
 #[allow(unused_imports)]
 use crate::{eprint, eprintln};
@@ -29,8 +29,8 @@ impl DefaultFunction {
 
     pub const fn get_str(&self) -> &str {
         match self {
-            Self::Print => "print",
-            Self::Read => "read",
+            Self::Print => "print()",
+            Self::Read => "read()",
         }
     }
 
@@ -84,7 +84,7 @@ fn read() -> Tuple {
         .to_string();
 
     let mut tuple = Tuple::new();
-    tuple.table.set_string("°0", input);
+    tuple.table.set_string(format!("{}0", CHAR_SEP_NAME), input);
 
     return tuple;
 }

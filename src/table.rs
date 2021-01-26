@@ -4,7 +4,7 @@ use crate::operation::*;
 use crate::tuple::*;
 use crate::variable::*;
 use crate::vec_free::*;
-use crate::{decode_string, string_to_usize};
+use crate::{decode_string, string_to_usize, CHAR_SEP_NAME};
 use num::BigInt;
 use std::collections::HashMap;
 
@@ -101,7 +101,7 @@ impl Table {
                 entry,
                 Tuple::from(
                     &raw_value
-                        .split(0 as char)
+                        .split(CHAR_SEP_NAME)
                         .map(|s| s.trim().to_string())
                         .collect(),
                     self,

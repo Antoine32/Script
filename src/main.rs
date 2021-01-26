@@ -19,10 +19,14 @@ mod variable;
 mod vec_free;
 mod vec_table;
 
+use default_fn::*;
+use function::*;
 use operation::*;
 use process::*;
 use tuple::*;
 use vec_table::*;
+
+pub const CHAR_SEP_NAME: char = CHAR_SEP_NAME;
 
 /*
    To print debug info use
@@ -68,7 +72,7 @@ pub fn usize_to_string(mut num: usize) -> String {
 
         match std::char::from_u32(fit) {
             Some(ch) => string.push(ch),
-            None => string.push(0 as char),
+            None => string.push(CHAR_SEP_NAME),
         }
     }
 
@@ -260,6 +264,10 @@ fn time_taken(elapsed: Duration) -> String {
 
 fn main() {
     let mut vec_table = VecTable::new();
+
+    for i in 0..(DEFAULTS_FUNCTIONS.len()) {
+        vec_table.set_function(DEFAULTS_FUNCTIONS_STR[i], Function::new(true, i));
+    }
 
     let timer_a = Instant::now();
 

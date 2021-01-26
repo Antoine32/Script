@@ -104,23 +104,25 @@ pub enum Operator {
     PriorityDecrement,
     Separator,
     Return,
+    SetFunction,
 }
 
 // Priority
-pub const P_NOT: usize = 11; // !
-pub const P_POW: usize = 10; // **
-pub const P_MUL_DIV_MOD: usize = 9; // * / %
-pub const P_ADD_SUB: usize = 8; // + -
-pub const P_BIT_AND: usize = 7; // &
-pub const P_XOR: usize = 6; // ^
-pub const P_BIT_OR: usize = 5; // |
-pub const P_COMPARAISON: usize = 4; // == != < > <= >=
-pub const P_AND: usize = 3; // &&
-pub const P_OR: usize = 2; // ||
+pub const P_NOT: usize = 12; // !
+pub const P_POW: usize = 11; // **
+pub const P_MUL_DIV_MOD: usize = 10; // * / %
+pub const P_ADD_SUB: usize = 9; // + -
+pub const P_BIT_AND: usize = 8; // &
+pub const P_XOR: usize = 7; // ^
+pub const P_BIT_OR: usize = 6; // |
+pub const P_COMPARAISON: usize = 5; // == != < > <= >=
+pub const P_AND: usize = 4; // &&
+pub const P_OR: usize = 3; // ||
+pub const P_SEPARATOR: usize = 2;
 pub const P_ASSIGNEMENT: usize = 1; // = += -= *= /= %= &= |= ^= **=
-pub const P_RETURN: usize = 0; // return
+pub const P_RETURN_FUNCTION: usize = 0; // return
 
-pub const LEVELS_OF_PRIORITY: usize = 12;
+pub const LEVELS_OF_PRIORITY: usize = 13;
 
 impl Operator {
     pub fn from_string(string: &str) -> Option<Self> {
@@ -165,8 +167,9 @@ impl Operator {
             Self::NotEqual => P_COMPARAISON,
             Self::PriorityIncrement => 0,
             Self::PriorityDecrement => 0,
-            Self::Separator => 0,
-            Self::Return => P_RETURN,
+            Self::Separator => P_SEPARATOR,
+            Self::Return => P_RETURN_FUNCTION,
+            Self::SetFunction => P_RETURN_FUNCTION,
         }
     }
 
@@ -204,6 +207,7 @@ impl Operator {
             Self::PriorityDecrement => ")",
             Self::Separator => ",",
             Self::Return => "return",
+            Self::SetFunction => "fn",
         }
     }
 
@@ -259,6 +263,7 @@ impl std::cmp::PartialEq for Operator {
             Self::PriorityDecrement => matches!(other, Self::PriorityDecrement),
             Self::Separator => matches!(other, Self::Separator),
             Self::Return => matches!(other, Self::Return),
+            Self::SetFunction => matches!(other, Self::SetFunction),
         }
     }
 }
@@ -298,6 +303,7 @@ impl Clone for Operator {
             Self::PriorityDecrement => Self::PriorityDecrement,
             Self::Separator => Self::Separator,
             Self::Return => Self::Return,
+            Self::SetFunction => Self::SetFunction,
         }
     }
 }

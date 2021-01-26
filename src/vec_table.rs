@@ -1,3 +1,4 @@
+use crate::function::*;
 use crate::table::*;
 use crate::variable::*;
 use num::BigInt;
@@ -79,6 +80,10 @@ impl VecTable {
         self.tables[level].set_null(entry);
     }
 
+    pub fn set_function_specified(&mut self, level: usize, entry: &str, value: Function) {
+        self.tables[level].set_function(entry, value);
+    }
+
     pub fn set_string(&mut self, entry: &str, value: String) {
         for i in 0..(self.tables.len()) {
             if self.tables[i].contains(entry) {
@@ -132,6 +137,17 @@ impl VecTable {
         }
 
         self.set_null_specified(self.tables.len() - 1, entry);
+    }
+
+    pub fn set_function(&mut self, entry: &str, value: Function) {
+        for i in 0..(self.tables.len()) {
+            if self.tables[i].contains(entry) {
+                self.set_function_specified(i, entry, value);
+                return;
+            }
+        }
+
+        self.set_function_specified(self.tables.len() - 1, entry, value);
     }
 
     pub fn get(&self, entry: &str) -> Option<(&Variable, usize)> {

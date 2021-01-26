@@ -1,4 +1,3 @@
-use crate::default_fn::*;
 use crate::function::*;
 use crate::instruction::*;
 use crate::instruction_fn::*;
@@ -8,7 +7,7 @@ use crate::table::*;
 use crate::tuple::*;
 use crate::variable::*;
 use crate::vec_table::*;
-use std::collections::HashMap;
+use crate::CHAR_SEP_NAME;
 
 #[allow(unused_imports)]
 use crate::{eprint, eprintln};
@@ -61,7 +60,7 @@ impl Process {
                 let i = entry_list.len();
 
                 let name = format!(
-                    "{}°{}°{}",
+                    "{}{}{}{}{}",
                     {
                         match kind {
                             Kind::Null => raw_value,
@@ -71,7 +70,9 @@ impl Process {
                             _ => "",
                         }
                     },
+                    CHAR_SEP_NAME,
                     entry_list.len(),
+                    CHAR_SEP_NAME,
                     line_num
                 );
 
@@ -109,11 +110,6 @@ impl Process {
         let mut table = Table::new();
         let mut entry_list: Vec<String> = Vec::new();
         let mut operator_order: Vec<Vec<usize>> = Vec::with_capacity(LEVELS_OF_PRIORITY);
-        let mut functions: HashMap<String, usize> = HashMap::new();
-
-        for i in 0..(DEFAULTS_FUNCTIONS.len()) {
-            functions.insert(DEFAULTS_FUNCTIONS_STR[i].to_string(), i);
-        }
 
         let line_char: Vec<char> = line.chars().collect();
         let mut n: usize = 0;
@@ -261,7 +257,7 @@ impl Process {
 
     #[cfg(feature = "print")]
     fn print_var(&self, name: &str) {
-        if name != "°" {
+        if name != CHAR_SEP_NAME {
             let var = self.table.get(name);
 
             eprint!(
@@ -447,7 +443,7 @@ fn remove(table: &mut Table, entry_list: &mut Vec<String>, pos: usize) {
 }
 
 pub fn get_real_name(name: &str) -> &str {
-    match name.find('°') {
+    match name.find(CHAR_SEP_NAME) {
         Some(n) => name.get(0..n).unwrap(),
         None => name,
     }
@@ -461,8 +457,8 @@ fn convert(
     let mut operations: Vec<(Intruction, Vec<String>)> = Vec::new();
 
     if operator_order.len() > 0 {
-        let mut name_a = String::from("°");
-        let mut name_b = String::from("°");
+        let mut name_a = String::from(CHAR_SEP_NAME);
+        let mut name_b = String::from(CHAR_SEP_NAME);
 
         let mut delete: (bool, bool);
 
@@ -565,8 +561,8 @@ fn convert(
                     },
                 }
 
-                name_a = String::from("°");
-                name_b = String::from("°");
+                name_a = String::from(CHAR_SEP_NAME);
+                name_b = String::from(CHAR_SEP_NAME);
 
                 if delete.1 {
                     remove(&mut table, entry_list, operator_position + 1);
