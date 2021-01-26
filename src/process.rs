@@ -112,7 +112,6 @@ impl Process {
             operator_order: &mut Vec<Vec<usize>>,
             mut raw_value: &str,
             kind: Kind,
-            extra_priority: usize,
             line_num: usize,
         ) -> String {
             *last_kind = kind;
@@ -159,7 +158,7 @@ impl Process {
 
                 let var = table.get(&name);
                 if var.kind == Kind::Operator {
-                    let pri = OPERATORS[var.pos].get_priority() + extra_priority;
+                    let pri = OPERATORS[var.pos].get_priority();
 
                     while operator_order.len() <= pri {
                         operator_order.push(Vec::new());
@@ -188,13 +187,11 @@ impl Process {
         let mut last_kind: Kind = Kind::Operator;
         let mut last_raw_value: String = String::new();
 
-        let mut extra_priority: usize = 0;
-
         while n < line_char.len() {
             c = line_char[n];
 
             if !c.is_whitespace() {
-                let (raw_value, kind) = get_kind_possibility(line_char.get(n..).unwrap());
+                let (raw_value, kind) = get_kind(line_char.get(n..).unwrap());
 
                 if raw_value == "-" && last_kind == Kind::Operator {
                     if last_raw_value.as_str() == "+" {
@@ -213,7 +210,6 @@ impl Process {
                             &mut operator_order,
                             &raw_value,
                             kind,
-                            extra_priority,
                             line_num,
                         );
 
@@ -229,7 +225,6 @@ impl Process {
                             &mut operator_order,
                             "-1",
                             Kind::Number,
-                            extra_priority,
                             line_num,
                         );
 
@@ -245,17 +240,12 @@ impl Process {
                             &mut operator_order,
                             "*",
                             Kind::Operator,
-                            extra_priority,
                             line_num,
                         );
 
                         #[cfg(feature = "print")]
                         to_print_vec.push(buf);
                     }
-                } else if raw_value == "(" {
-                    extra_priority += LEVELS_OF_PRIORITY;
-                } else if raw_value == ")" {
-                    extra_priority -= LEVELS_OF_PRIORITY;
                 } else {
                     #[allow(unused_variables)]
                     let buf = add_variable(
@@ -266,7 +256,6 @@ impl Process {
                         &mut operator_order,
                         &raw_value,
                         kind,
-                        extra_priority,
                         line_num,
                     );
 

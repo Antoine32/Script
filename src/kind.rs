@@ -62,7 +62,7 @@ impl Clone for Kind {
 
 impl Copy for Kind {}
 
-pub fn get_kind_possibility(chars: &[char]) -> (String, Kind) {
+pub fn get_kind(chars: &[char]) -> (String, Kind) {
     let mut n = 0;
     let mut kind = Kind::Null;
     let mut string = String::new();
