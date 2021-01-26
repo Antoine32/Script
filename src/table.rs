@@ -1,7 +1,8 @@
+use crate::decode_string;
 use crate::kind::*;
+use crate::operation::*;
 use crate::variable::*;
 use crate::vec_free::*;
-use crate::{decode_string, get_operator_num};
 use num::BigInt;
 use std::collections::HashMap;
 
@@ -82,7 +83,9 @@ impl Table {
             Kind::Number => self.set_number(entry, raw_value.parse::<f64>().unwrap()),
             Kind::BigInt => self.set_bigint(entry, raw_value.parse::<BigInt>().unwrap()),
             Kind::Bool => self.set_bool(entry, raw_value.parse::<bool>().unwrap()),
-            Kind::Operator => self.set_operator(entry, get_operator_num(raw_value).unwrap()),
+            Kind::Operator => {
+                self.set_operator(entry, Operator::from_string(raw_value).unwrap().get_pos())
+            }
             Kind::Null => self.set_null(entry),
             Kind::Function => self.set_function(
                 entry,

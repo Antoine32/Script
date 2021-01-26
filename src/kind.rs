@@ -1,4 +1,4 @@
-use crate::OPERATORS;
+use crate::operation::*;
 
 #[allow(unused_imports)]
 use crate::{eprint, eprintln};
@@ -16,13 +16,13 @@ pub enum Kind {
 impl std::fmt::Display for Kind {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Kind::String => write!(f, "string"),
-            Kind::Number => write!(f, "number"),
-            Kind::BigInt => write!(f, "bigint"),
-            Kind::Bool => write!(f, "bool"),
-            Kind::Operator => write!(f, "operator"),
-            Kind::Null => write!(f, "null"),
-            Kind::Function => write!(f, "function"),
+            Self::String => write!(f, "string"),
+            Self::Number => write!(f, "number"),
+            Self::BigInt => write!(f, "bigint"),
+            Self::Bool => write!(f, "bool"),
+            Self::Operator => write!(f, "operator"),
+            Self::Null => write!(f, "null"),
+            Self::Function => write!(f, "function"),
         }
     }
 }
@@ -30,13 +30,13 @@ impl std::fmt::Display for Kind {
 impl std::cmp::PartialEq for Kind {
     fn eq(&self, other: &Self) -> bool {
         match self {
-            Kind::String => matches!(other, Kind::String),
-            Kind::Number => matches!(other, Kind::Number),
-            Kind::BigInt => matches!(other, Kind::BigInt),
-            Kind::Bool => matches!(other, Kind::Bool),
-            Kind::Operator => matches!(other, Kind::Operator),
-            Kind::Null => matches!(other, Kind::Null),
-            Kind::Function => matches!(other, Kind::Function),
+            Self::String => matches!(other, Self::String),
+            Self::Number => matches!(other, Self::Number),
+            Self::BigInt => matches!(other, Self::BigInt),
+            Self::Bool => matches!(other, Self::Bool),
+            Self::Operator => matches!(other, Self::Operator),
+            Self::Null => matches!(other, Self::Null),
+            Self::Function => matches!(other, Self::Function),
         }
     }
 }
@@ -44,13 +44,13 @@ impl std::cmp::PartialEq for Kind {
 impl Clone for Kind {
     fn clone(&self) -> Self {
         match self {
-            Kind::String => Kind::String,
-            Kind::Number => Kind::Number,
-            Kind::BigInt => Kind::BigInt,
-            Kind::Bool => Kind::Bool,
-            Kind::Operator => Kind::Operator,
-            Kind::Null => Kind::Null,
-            Kind::Function => Kind::Function,
+            Self::String => Self::String,
+            Self::Number => Self::Number,
+            Self::BigInt => Self::BigInt,
+            Self::Bool => Self::Bool,
+            Self::Operator => Self::Operator,
+            Self::Null => Self::Null,
+            Self::Function => Self::Function,
         }
     }
 }
@@ -66,7 +66,7 @@ pub fn get_kind_possibility(chars: &[char]) -> (String, Kind) {
         string.push(*c);
     }
 
-    for o in OPERATORS.iter() {
+    for o in OPERATORS_STR.iter() {
         if string.starts_with(o) {
             kind = Kind::Operator;
             break;
@@ -164,7 +164,7 @@ pub fn get_kind_possibility(chars: &[char]) -> (String, Kind) {
             let mut opt: &str = "";
             let mut max = 0;
 
-            for o in OPERATORS.iter() {
+            for o in OPERATORS_STR.iter() {
                 if o.len() > max && string.starts_with(o) {
                     max = o.len();
                     opt = o;

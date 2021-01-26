@@ -1,4 +1,4 @@
-use crate::{kind::*, table::*, OPERATORS};
+use crate::{kind::*, table::*, Operator, OPERATORS};
 use num::{BigInt, FromPrimitive, One, ToPrimitive, Zero};
 
 #[allow(unused_imports)]
@@ -111,7 +111,7 @@ impl Variable {
         }
     }
 
-    pub fn get_operator(&self, entry: &str) -> Result<&str, String> {
+    pub fn get_operator(&self, entry: &str) -> Result<Operator, String> {
         match self.kind {
             Kind::Operator => Ok(OPERATORS[self.pos]),
             _ => Err(self.get_err(entry, Kind::Operator)),

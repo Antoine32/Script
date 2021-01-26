@@ -87,7 +87,7 @@ impl ProcessLine {
 
                 let var = table.get(&name);
                 if var.kind == Kind::Operator {
-                    let pri = PRIORITY[var.pos] + extra_priority;
+                    let pri = OPERATORS[var.pos].get_priority() + extra_priority;
 
                     while operator_order.len() <= pri {
                         operator_order.push(Vec::new());
@@ -480,48 +480,78 @@ fn convert(
 
                 delete = (false, true);
 
-                match operator {
-                    "!" => {
-                        operations.push((Intruction::NOT, vec![name_b]));
-                        delete = (false, false);
-                    }
-                    "**" => operations.push((Intruction::POW, vec![name_a, name_b])),
-                    "*" => operations.push((Intruction::MUL, vec![name_a, name_b])),
-                    "/" => operations.push((Intruction::DIV, vec![name_a, name_b])),
-                    "%" => operations.push((Intruction::MOD, vec![name_a, name_b])),
-                    "+" => operations.push((Intruction::ADD, vec![name_a, name_b])),
-                    "-" => operations.push((Intruction::SUB, vec![name_a, name_b])),
-                    "&" => operations.push((Intruction::BAND, vec![name_a, name_b])),
-                    "^" => operations.push((Intruction::XOR, vec![name_a, name_b])),
-                    "|" => operations.push((Intruction::BOR, vec![name_a, name_b])),
-                    "==" => operations.push((Intruction::EQU, vec![name_a, name_b])),
-                    "!=" => operations.push((Intruction::NEQU, vec![name_a, name_b])),
-                    ">=" => operations.push((Intruction::EGRE, vec![name_a, name_b])),
-                    "<=" => operations.push((Intruction::ELES, vec![name_a, name_b])),
-                    ">" => operations.push((Intruction::GRE, vec![name_a, name_b])),
-                    "<" => operations.push((Intruction::LES, vec![name_a, name_b])),
-                    "&&" => operations.push((Intruction::AND, vec![name_a, name_b])),
-                    "||" => operations.push((Intruction::OR, vec![name_a, name_b])),
-                    "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "**=" | "&=" | "^=" | "|=" => {
+                match operator.get_priority() {
+                    P_ASSIGNEMENT => {
                         let name_a_buf = get_real_name(&name_a).to_string();
                         let name_b_buf = name_b.to_string();
 
                         match operator {
-                            "+=" => operations.push((Intruction::ADD, vec![name_a, name_b])),
-                            "-=" => operations.push((Intruction::SUB, vec![name_a, name_b])),
-                            "*=" => operations.push((Intruction::MUL, vec![name_a, name_b])),
-                            "/=" => operations.push((Intruction::DIV, vec![name_a, name_b])),
-                            "%=" => operations.push((Intruction::MOD, vec![name_a, name_b])),
-                            "**=" => operations.push((Intruction::POW, vec![name_a, name_b])),
-                            "&=" => operations.push((Intruction::BAND, vec![name_a, name_b])),
-                            "^=" => operations.push((Intruction::XOR, vec![name_a, name_b])),
-                            "|=" => operations.push((Intruction::BOR, vec![name_a, name_b])),
+                            Operator::ADD_ASIGN => {
+                                operations.push((Intruction::ADD, vec![name_a, name_b]))
+                            }
+                            Operator::SUB_ASIGN => {
+                                operations.push((Intruction::SUB, vec![name_a, name_b]))
+                            }
+                            Operator::MUL_ASIGN => {
+                                operations.push((Intruction::MUL, vec![name_a, name_b]))
+                            }
+                            Operator::DIV_ASIGN => {
+                                operations.push((Intruction::DIV, vec![name_a, name_b]))
+                            }
+                            Operator::MOD_ASIGN => {
+                                operations.push((Intruction::MOD, vec![name_a, name_b]))
+                            }
+                            Operator::POW_ASIGN => {
+                                operations.push((Intruction::POW, vec![name_a, name_b]))
+                            }
+                            Operator::BAND_ASIGN => {
+                                operations.push((Intruction::BAND, vec![name_a, name_b]))
+                            }
+                            Operator::XOR_ASIGN => {
+                                operations.push((Intruction::XOR, vec![name_a, name_b]))
+                            }
+                            Operator::BOR_ASIGN => {
+                                operations.push((Intruction::BOR, vec![name_a, name_b]))
+                            }
                             _ => {}
                         }
 
                         operations.push((Intruction::ASG, vec![name_a_buf, name_b_buf]))
                     }
-                    _ => break,
+                    _ => match operator {
+                        Operator::NOT => {
+                            operations.push((Intruction::NOT, vec![name_b]));
+                            delete = (false, false);
+                        }
+                        Operator::POW => operations.push((Intruction::POW, vec![name_a, name_b])),
+                        Operator::MUL => operations.push((Intruction::MUL, vec![name_a, name_b])),
+                        Operator::DIV => operations.push((Intruction::DIV, vec![name_a, name_b])),
+                        Operator::MOD => operations.push((Intruction::MOD, vec![name_a, name_b])),
+                        Operator::ADD => operations.push((Intruction::ADD, vec![name_a, name_b])),
+                        Operator::SUB => operations.push((Intruction::SUB, vec![name_a, name_b])),
+                        Operator::BAND => operations.push((Intruction::BAND, vec![name_a, name_b])),
+                        Operator::XOR => operations.push((Intruction::XOR, vec![name_a, name_b])),
+                        Operator::BOR => operations.push((Intruction::BOR, vec![name_a, name_b])),
+                        Operator::EQUAL => operations.push((Intruction::EQU, vec![name_a, name_b])),
+                        Operator::NOT_EQUAL => {
+                            operations.push((Intruction::NEQU, vec![name_a, name_b]))
+                        }
+                        Operator::GREATER_EQUAL => {
+                            operations.push((Intruction::EGRE, vec![name_a, name_b]))
+                        }
+                        Operator::LESSER_EQUAL => {
+                            operations.push((Intruction::ELES, vec![name_a, name_b]))
+                        }
+                        Operator::GREATER => {
+                            operations.push((Intruction::GRE, vec![name_a, name_b]))
+                        }
+                        Operator::LESSER => {
+                            operations.push((Intruction::LES, vec![name_a, name_b]))
+                        }
+                        Operator::AND => operations.push((Intruction::AND, vec![name_a, name_b])),
+                        Operator::OR => operations.push((Intruction::OR, vec![name_a, name_b])),
+                        _ => break,
+                    },
                 }
 
                 name_a = String::from("°");
