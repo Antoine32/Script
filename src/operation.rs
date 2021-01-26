@@ -1,7 +1,7 @@
 #[allow(unused_imports)]
 use crate::{eprint, eprintln};
 
-pub const OPERATORS: [Operator; 32] = [
+pub const OPERATORS: [Operator; 30] = [
     Operator::PowAsign,
     Operator::AddAsign,
     Operator::SubAsign,
@@ -30,8 +30,6 @@ pub const OPERATORS: [Operator; 32] = [
     Operator::GreaterEqual,
     Operator::LesserEqual,
     Operator::NotEqual,
-    Operator::PriorityIncrement,
-    Operator::PriorityDecrement,
     Operator::Separator,
     Operator::Return,
 ];
@@ -67,8 +65,6 @@ pub const OPERATORS_STR: [&str; OPERATORS.len()] = [
     OPERATORS[27].get_str(),
     OPERATORS[28].get_str(),
     OPERATORS[29].get_str(),
-    OPERATORS[30].get_str(),
-    OPERATORS[31].get_str(),
 ];
 
 pub enum Operator {
@@ -100,8 +96,6 @@ pub enum Operator {
     GreaterEqual,
     LesserEqual,
     NotEqual,
-    PriorityIncrement,
-    PriorityDecrement,
     Separator,
     Return,
     SetFunction,
@@ -165,8 +159,6 @@ impl Operator {
             Self::GreaterEqual => P_COMPARAISON,
             Self::LesserEqual => P_COMPARAISON,
             Self::NotEqual => P_COMPARAISON,
-            Self::PriorityIncrement => 0,
-            Self::PriorityDecrement => 0,
             Self::Separator => P_SEPARATOR,
             Self::Return => P_RETURN_FUNCTION,
             Self::SetFunction => P_RETURN_FUNCTION,
@@ -203,8 +195,6 @@ impl Operator {
             Self::GreaterEqual => ">=",
             Self::LesserEqual => "<=",
             Self::NotEqual => "!=",
-            Self::PriorityIncrement => "(",
-            Self::PriorityDecrement => ")",
             Self::Separator => ",",
             Self::Return => "return",
             Self::SetFunction => "fn",
@@ -259,8 +249,6 @@ impl std::cmp::PartialEq for Operator {
             Self::GreaterEqual => matches!(other, Self::GreaterEqual),
             Self::LesserEqual => matches!(other, Self::LesserEqual),
             Self::NotEqual => matches!(other, Self::NotEqual),
-            Self::PriorityIncrement => matches!(other, Self::PriorityIncrement),
-            Self::PriorityDecrement => matches!(other, Self::PriorityDecrement),
             Self::Separator => matches!(other, Self::Separator),
             Self::Return => matches!(other, Self::Return),
             Self::SetFunction => matches!(other, Self::SetFunction),
@@ -299,8 +287,6 @@ impl Clone for Operator {
             Self::GreaterEqual => Self::GreaterEqual,
             Self::LesserEqual => Self::LesserEqual,
             Self::NotEqual => Self::NotEqual,
-            Self::PriorityIncrement => Self::PriorityIncrement,
-            Self::PriorityDecrement => Self::PriorityDecrement,
             Self::Separator => Self::Separator,
             Self::Return => Self::Return,
             Self::SetFunction => Self::SetFunction,

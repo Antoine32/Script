@@ -1,4 +1,5 @@
 use crate::operation::*;
+use crate::CHAR_SEP_NAME;
 
 #[allow(unused_imports)]
 use crate::{eprint, eprintln};
@@ -137,10 +138,10 @@ pub fn get_kind_possibility(chars: &[char]) -> (String, Kind) {
             kind = Kind::Bool;
             n += "false".len();
             break;
-        } else if kind == Kind::Null && chars[n].is_alphabetic() {
+        } else if kind == Kind::Null && chars[n].is_alphabetic() || chars[n] == CHAR_SEP_NAME {
             n += 1;
 
-            while n < chars.len() && chars[n].is_alphanumeric() {
+            while n < chars.len() && chars[n].is_alphanumeric() || chars[n] == CHAR_SEP_NAME {
                 n += 1;
             }
 

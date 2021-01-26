@@ -33,11 +33,72 @@ impl Process {
         self.table.merge(other.table);
     }
 
-    pub fn from(mut line: String, line_num: usize) -> (Self, String) {
+    pub fn from(mut line: String, mut line_num: usize) -> (Self, String) {
         line = line.trim().to_string();
+        let mut this = Self::new();
 
         #[cfg(feature = "print")]
         let mut to_print_vec: Vec<String> = Vec::new();
+
+        let mut at = 0;
+
+        while at < line.len() {
+            let mut pos_inc = 0;
+            let mut pos_dec = 0;
+
+            let mut count_inc = 0;
+            let mut count_dec = 0;
+
+            for (i, ch) in line
+                .get(at..)
+                .unwrap()
+                .match_indices(|ch| ch == '(' || ch == ')')
+            {
+                match ch {
+                    "(" => {
+                        count_inc += 1;
+                        if count_inc == 1 {
+                            pos_inc = i;
+                        }
+                    }
+                    ")" => {
+                        count_dec += 1;
+
+                        if count_dec == count_inc {
+                            pos_dec = i;
+                            break;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            if count_dec == count_inc && count_inc > 0 {
+                let (other, _string) = Self::from(
+                    line.get((pos_inc + 1)..pos_dec).unwrap().to_string(),
+                    line_num,
+                );
+                this.merge(other);
+                line_num += 1;
+
+                #[cfg(feature = "print")]
+                to_print_vec.push(_string);
+
+                let vec = &this.operations[this.operations.len() - 1].1;
+                let name = &vec[0];
+
+                let mult = (
+                    line.get(0..(pos_inc + 1)).unwrap(),
+                    name,
+                    line.get(pos_dec..).unwrap(),
+                );
+
+                at = mult.0.len() + mult.1.len();
+                line = format!("{}{}{}", mult.0, mult.1, mult.2);
+            } else {
+                break;
+            }
+        }
 
         #[cfg(feature = "print")]
         to_print_vec.push(format!("\n{}: {} \t|{}|\n", line_num, line.len(), line));
@@ -59,15 +120,18 @@ impl Process {
             if raw_value != " " {
                 let i = entry_list.len();
 
-                let name = format!(
+                let mut name = format!(
                     "{}{}{}{}{}",
                     {
                         match kind {
-                            Kind::Null => raw_value,
-                            Kind::Function => raw_value
-                                .get(0..(raw_value.find('(').unwrap() + 1))
-                                .unwrap(),
-                            _ => "",
+                            Kind::Null => raw_value.to_string(),
+                            Kind::Function => format!(
+                                "{})",
+                                raw_value
+                                    .get(0..(raw_value.find('(').unwrap() + 1))
+                                    .unwrap()
+                            ),
+                            _ => "".to_string(),
                         }
                     },
                     CHAR_SEP_NAME,
@@ -81,6 +145,11 @@ impl Process {
                         raw_value = raw_value
                             .get((raw_value.find('(').unwrap() + 1)..(raw_value.find(')').unwrap()))
                             .unwrap();
+                    }
+                    Kind::Null => {
+                        if raw_value.contains(CHAR_SEP_NAME) {
+                            name = raw_value.to_string();
+                        }
                     }
                     _ => {}
                 }
@@ -246,13 +315,12 @@ impl Process {
             to_print.push('\n');
         }
 
-        (
-            Process {
-                table: table,
-                operations: operations,
-            },
-            to_print,
-        )
+        this.merge(Process {
+            table: table,
+            operations: operations,
+        });
+
+        return (this, to_print);
     }
 
     #[cfg(feature = "print")]
