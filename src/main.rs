@@ -25,7 +25,8 @@ use operation::*;
 use process::*;
 use vec_table::*;
 
-pub const CHAR_SEP_NAME: char = CHAR_SEP_NAME;
+pub const CHAR_SEP_NAME: char = 0 as char;
+// format!("{}", CHAR_SEP_NAME).as_str()
 
 /*
    To print debug info use
@@ -267,7 +268,7 @@ fn main() {
     for i in 0..(DEFAULTS_FUNCTIONS.len()) {
         vec_table.set_function(
             DEFAULTS_FUNCTIONS_STR[i],
-            Function::new(true, i, &DEFAULTS_FUNCTIONS_ARGS[i]),
+            Function::new(true, i, &Vec::from(DEFAULTS_FUNCTIONS_ARGS[i])),
         );
     }
 

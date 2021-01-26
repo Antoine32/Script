@@ -257,7 +257,7 @@ impl Process {
 
     #[cfg(feature = "print")]
     fn print_var(&self, name: &str) {
-        if name != CHAR_SEP_NAME {
+        if name != format!("{}", CHAR_SEP_NAME).as_str() {
             let var = self.table.get(name);
 
             eprint!(
@@ -285,13 +285,15 @@ impl Process {
     pub fn run(&self, vec_table: &mut VecTable, pos: usize) -> Tuple {
         let mut this = self.clone();
 
-        #[cfg(feature = "print")]
-        let mut i = 0;
-
         eprintln!("level: {}", vec_table.len() - 1);
         eprintln!("\n{}\t: {}\t: {}\n", "name", "kind", "value");
 
         for j in pos..(this.operations.len()) {
+            #[cfg(feature = "print")]
+            {
+                this.print_line(j);
+            }
+
             let (instruction, names) = &mut this.operations[j];
             let mut vars: Vec<Variable> = Vec::with_capacity(names.len());
 
@@ -300,26 +302,19 @@ impl Process {
                     let real_name = get_real_name(name);
 
                     match vec_table.get(real_name) {
-                        Some((var, level)) => match var.kind {
-                            Kind::String => this.table.set_string(
-                                name,
-                                var.get_string(real_name, vec_table.get_level(level))
-                                    .unwrap(),
-                            ),
-                            Kind::Number => this.table.set_number(
-                                name,
-                                var.get_number(real_name, vec_table.get_level(level))
-                                    .unwrap(),
-                            ),
-                            Kind::BigInt => this.table.set_bigint(
-                                name,
-                                var.get_bigint(real_name, vec_table.get_level(level))
-                                    .unwrap(),
-                            ),
-                            Kind::Bool => this.table.set_bool(
-                                name,
-                                var.get_bool(real_name, vec_table.get_level(level)).unwrap(),
-                            ),
+                        Some((level, var)) => match var.kind {
+                            Kind::String => this
+                                .table
+                                .set_string(name, var.get_string(real_name, level).unwrap()),
+                            Kind::Number => this
+                                .table
+                                .set_number(name, var.get_number(real_name, level).unwrap()),
+                            Kind::BigInt => this
+                                .table
+                                .set_bigint(name, var.get_bigint(real_name, level).unwrap()),
+                            Kind::Bool => this
+                                .table
+                                .set_bool(name, var.get_bool(real_name, level).unwrap()),
                             _ => {}
                         },
                         None => {}
@@ -327,12 +322,6 @@ impl Process {
                 }
 
                 vars.push(this.table.get(name).clone());
-            }
-
-            #[cfg(feature = "print")]
-            {
-                this.print_line(i);
-                i += 1;
             }
 
             match *instruction {
@@ -397,10 +386,14 @@ impl Process {
                         }
                     };
 
-                    let (var, level) = vec_table.get(&name).unwrap();
-                    var.get_function(&name, vec_table.get_level(level))
-                        .unwrap()
-                        .run(&tuple, self, vec_table);
+                    match vec_table.get(&name) {
+                        Some((level, var)) => {
+                            var.get_function(&name, level)
+                                .unwrap()
+                                .run(&tuple, self, vec_table);
+                        }
+                        None => {}
+                    }
                 }
                 Intruction::END => {
                     if this.table.get(&names[0]).kind == Kind::Tuple {

@@ -63,8 +63,6 @@ impl Function {
             }
         }
 
-        let table = 0;
-
         let val = if self.default_fn {
             DEFAULTS_FUNCTIONS[self.pos].run(vec_table) // not sure if vec_table should be added here but I don't have any use for it currentyly
         } else {

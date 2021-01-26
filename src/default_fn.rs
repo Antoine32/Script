@@ -13,7 +13,7 @@ pub const DEFAULTS_FUNCTIONS_STR: [&str; DEFAULTS_FUNCTIONS.len()] = [
     DEFAULTS_FUNCTIONS[1].get_str(),
 ];
 
-pub const DEFAULTS_FUNCTIONS_ARGS: [Vec<&str>; DEFAULTS_FUNCTIONS.len()] = [
+pub const DEFAULTS_FUNCTIONS_ARGS: [&[&str]; DEFAULTS_FUNCTIONS.len()] = [
     DEFAULTS_FUNCTIONS[0].get_arguments(),
     DEFAULTS_FUNCTIONS[1].get_arguments(),
 ];
@@ -41,10 +41,10 @@ impl DefaultFunction {
         }
     }
 
-    pub const fn get_arguments(&self) -> Vec<&str> {
+    pub const fn get_arguments(&self) -> &[&str] {
         match self {
-            Self::Print => PRINT_ARGS,
-            Self::Read => READ_ARGS,
+            Self::Print => &PRINT_ARGS,
+            Self::Read => &READ_ARGS,
         }
     }
 
@@ -83,22 +83,18 @@ impl Clone for DefaultFunction {
 impl Copy for DefaultFunction {}
 
 const PRINT_TEXT: &str = "text";
-const PRINT_ARGS: Vec<&str> = vec![PRINT_TEXT];
+const PRINT_ARGS: [&str; 1] = [PRINT_TEXT];
 
 fn print(vec_table: &mut VecTable) -> Tuple {
     match vec_table.get(PRINT_TEXT) {
-        Some((var, level)) => println!(
-            "{}",
-            var.get_string(PRINT_TEXT, vec_table.get_level(level))
-                .unwrap()
-        ),
+        Some((level, var)) => println!("{}", var.get_string(PRINT_TEXT, level).unwrap()),
         None => println!(""),
     }
 
     return Tuple::new();
 }
 
-const READ_ARGS: Vec<&str> = Vec::new();
+const READ_ARGS: [&str; 0] = [];
 
 fn read() -> Tuple {
     let mut input = String::new();
@@ -111,7 +107,9 @@ fn read() -> Tuple {
         .to_string();
 
     let mut tuple = Tuple::new();
-    tuple.table.set_string(format!("{}0", CHAR_SEP_NAME), input);
+    tuple
+        .table
+        .set_string(&format!("{}0", CHAR_SEP_NAME), input);
 
     return tuple;
 }

@@ -42,12 +42,13 @@ impl Table {
 
     // debug feature
     #[cfg(feature = "print")]
-    pub fn print_variables(&self) {
-        eprintln!("\n{}\t: {}\t: {}\n", "name", "kind", "value");
+    pub fn print_variables(&self, start_with: &str) {
+        eprintln!("{}{}\t: {}\t: {}\n", start_with, "name", "kind", "value");
 
         for (name, var) in self.variables.iter() {
             eprintln!(
-                "{}\t: {}\t: |{}|",
+                "{}{}\t: {}\t: |{}|",
+                start_with,
                 name,
                 var.kind,
                 var.get_string(name, self).unwrap()

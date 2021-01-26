@@ -20,19 +20,20 @@ impl VecTable {
     // debug feature
     #[cfg(feature = "print")]
     pub fn print_tables(&self) {
-        eprintln!("{}\t: {}\t: {}\t: {}", "table", "name", "kind", "value");
+        eprintln!("{}\t{}\t: {}\t: {}", "table", "name", "kind", "value");
 
         for i in 0..(self.tables.len()) {
-            eprintln!("\n#{}", i);
+            eprint!("\n#{}", i);
+            self.tables[i].print_variables("\t");
 
-            for (name, var) in self.tables[i].variables.iter() {
+            /*for (name, var) in self.tables[i].variables.iter() {
                 eprintln!(
                     "\t: {}\t: {}\t: |{}|",
                     name,
                     var.kind,
                     var.get_string(name, &self.tables[i]).unwrap()
                 );
-            }
+            }*/
         }
     }
 
@@ -150,10 +151,13 @@ impl VecTable {
         self.set_function_specified(self.tables.len() - 1, entry, value);
     }
 
-    pub fn get(&self, entry: &str) -> Option<(&Variable, usize)> {
+    pub fn get(&mut self, entry: &str) -> Option<(&mut Table, Variable)> {
         for i in (0..(self.tables.len())).rev() {
             if self.tables[i].contains(entry) {
-                return Some((self.tables[i].get(entry), i));
+                let level = self.get_level(i);
+                let var = level.get(entry).clone();
+
+                return Some((level, var));
             }
         }
 
