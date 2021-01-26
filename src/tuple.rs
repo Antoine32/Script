@@ -29,7 +29,8 @@ impl Tuple {
         return tuple;
     }
 
-    pub fn push(&mut self, var: &Variable, name: &str, table: &Table) {
+    pub fn push(&mut self, var: &Variable, mut name: &str, table: &Table) {
+        name = get_real_name(name);
         self.order.push(name.to_string());
 
         match var.kind {
