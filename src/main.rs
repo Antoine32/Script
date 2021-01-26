@@ -23,6 +23,7 @@ use default_fn::*;
 use function::*;
 use operation::*;
 use process::*;
+use tuple::*;
 use vec_table::*;
 
 pub const CHAR_SEP_NAME: char = 0 as char;
@@ -193,7 +194,7 @@ pub fn new_thread(
     }
 }
 
-pub fn process_text(content: String) -> Process {
+pub fn process_text(content: String, vec_table: &mut VecTable) -> Process {
     let mut lines: Vec<String> = content
         .replace(";\n", "\n")
         .replace(";", "\n")
@@ -210,7 +211,7 @@ pub fn process_text(content: String) -> Process {
     {
         while lines.len() > 0 {
             #[allow(unused_variables)]
-            let (processed_line, to_print) = Process::from(lines.pop().unwrap(), n);
+            let (processed_line, to_print) = Process::from(lines.pop().unwrap(), n, vec_table);
             process_lines.merge(processed_line);
             eprintln!("{}", to_print);
 
@@ -268,13 +269,13 @@ fn main() {
     for i in 0..(DEFAULTS_FUNCTIONS.len()) {
         vec_table.set_function(
             DEFAULTS_FUNCTIONS_STR[i],
-            Function::new(true, i, &Vec::from(DEFAULTS_FUNCTIONS_ARGS[i])),
+            Function::new(true, i, Tuple::init(&Vec::from(DEFAULTS_FUNCTIONS_ARGS[i]))),
         );
     }
 
     let timer_a = Instant::now();
 
-    let process_lines = process_text(readfile("test.te").unwrap());
+    let process_lines = process_text(readfile("test.te").unwrap(), &mut vec_table);
 
     let time_a = timer_a.elapsed();
 

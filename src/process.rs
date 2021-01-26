@@ -33,7 +33,7 @@ impl Process {
         self.table.merge(other.table);
     }
 
-    pub fn from(mut line: String, mut line_num: usize) -> (Self, String) {
+    pub fn from(mut line: String, mut line_num: usize, vec_table: &mut VecTable) -> (Self, String) {
         line = line.trim().to_string();
         let mut this = Self::new();
 
@@ -77,6 +77,7 @@ impl Process {
                 let (other, _string) = Self::from(
                     line.get((pos_inc + 1)..pos_dec).unwrap().to_string(),
                     line_num,
+                    vec_table,
                 );
                 this.merge(other);
                 line_num += 1;
@@ -301,7 +302,13 @@ impl Process {
             }
         }
 
-        let operations = convert(table.clone(), &mut entry_list, &mut operator_order);
+        let operations = convert(
+            table.clone(),
+            &mut entry_list,
+            &mut operator_order,
+            vec_table,
+            this.operations.len(),
+        );
 
         table.clear_null();
         table.clear_operator();
@@ -526,6 +533,8 @@ fn convert(
     mut table: Table,
     entry_list: &mut Vec<String>,
     operator_order: &mut Vec<Vec<usize>>,
+    vec_table: &mut VecTable,
+    at: usize,
 ) -> Vec<(Intruction, Vec<String>)> {
     let mut operations: Vec<(Intruction, Vec<String>)> = Vec::new();
 
@@ -630,8 +639,22 @@ fn convert(
                         Operator::And => operations.push((Intruction::AND, vec![name_a, name_b])),
                         Operator::Or => operations.push((Intruction::OR, vec![name_a, name_b])),
                         Operator::Return => operations.push((Intruction::END, vec![name_b])),
+                        Operator::End => operations.push((Intruction::END, Vec::new())),
                         Operator::Separator => {
                             operations.push((Intruction::TUP, vec![name_a, name_b]))
+                        }
+                        Operator::SetFunction => {
+                            vec_table.set_function(
+                                &name_a,
+                                Function::new(
+                                    false,
+                                    at + operations.len(),
+                                    table.get(&name_b).get_tuple(&name_b, &table).unwrap(),
+                                ),
+                            );
+                        }
+                        Operator::UseFunction => {
+                            operations.push((Intruction::GOTO, vec![name_a, name_b]))
                         }
                         _ => break,
                     },
