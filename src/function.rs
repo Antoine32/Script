@@ -19,11 +19,11 @@ impl Function {
         }
     }
 
-    pub fn run(&self, tuple: &Tuple, process: &Process, vec_table: &mut VecTable) -> Tuple {
+    pub fn run(&self, arguments: &Tuple, process: &Process, vec_table: &mut VecTable) -> Tuple {
         if self.default_fn {
-            DEFAULTS_FUNCTIONS[self.pos].run(tuple) // not sure if vec_table should be added here but I don't have any use for it currentyly
+            DEFAULTS_FUNCTIONS[self.pos].run(arguments) // not sure if vec_table should be added here but I don't have any use for it currentyly
         } else {
-            process.run(vec_table, self.pos)
+            process.run(vec_table, self.pos, arguments)
         }
     }
 }

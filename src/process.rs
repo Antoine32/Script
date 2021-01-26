@@ -286,7 +286,7 @@ impl Process {
         eprintln!("");
     }
 
-    pub fn run(&self, vec_table: &mut VecTable, pos: usize) -> Tuple {
+    pub fn run(&self, vec_table: &mut VecTable, pos: usize, argument: &Tuple) -> Tuple {
         let mut this = self.clone();
 
         #[cfg(feature = "print")]

@@ -21,6 +21,7 @@ mod vec_table;
 
 use operation::*;
 use process::*;
+use tuple::*;
 use vec_table::*;
 
 /*
@@ -270,7 +271,7 @@ fn main() {
 
     let timer_b = Instant::now();
 
-    process_lines.run(&mut vec_table, 0);
+    process_lines.run(&mut vec_table, 0, &Tuple::new());
 
     let time_b = timer_b.elapsed();
 
