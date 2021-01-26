@@ -486,31 +486,31 @@ fn convert(
                         let name_b_buf = name_b.to_string();
 
                         match operator {
-                            Operator::ADD_ASIGN => {
+                            Operator::AddAsign => {
                                 operations.push((Intruction::ADD, vec![name_a, name_b]))
                             }
-                            Operator::SUB_ASIGN => {
+                            Operator::SubAsign => {
                                 operations.push((Intruction::SUB, vec![name_a, name_b]))
                             }
-                            Operator::MUL_ASIGN => {
+                            Operator::MulAsign => {
                                 operations.push((Intruction::MUL, vec![name_a, name_b]))
                             }
-                            Operator::DIV_ASIGN => {
+                            Operator::DivAsign => {
                                 operations.push((Intruction::DIV, vec![name_a, name_b]))
                             }
-                            Operator::MOD_ASIGN => {
+                            Operator::ModAsign => {
                                 operations.push((Intruction::MOD, vec![name_a, name_b]))
                             }
-                            Operator::POW_ASIGN => {
+                            Operator::PowAsign => {
                                 operations.push((Intruction::POW, vec![name_a, name_b]))
                             }
-                            Operator::BAND_ASIGN => {
+                            Operator::BandAsign => {
                                 operations.push((Intruction::BAND, vec![name_a, name_b]))
                             }
-                            Operator::XOR_ASIGN => {
+                            Operator::XorAsign => {
                                 operations.push((Intruction::XOR, vec![name_a, name_b]))
                             }
-                            Operator::BOR_ASIGN => {
+                            Operator::BorAsign => {
                                 operations.push((Intruction::BOR, vec![name_a, name_b]))
                             }
                             _ => {}
@@ -519,37 +519,37 @@ fn convert(
                         operations.push((Intruction::ASG, vec![name_a_buf, name_b_buf]))
                     }
                     _ => match operator {
-                        Operator::NOT => {
+                        Operator::Not => {
                             operations.push((Intruction::NOT, vec![name_b]));
                             delete = (false, false);
                         }
-                        Operator::POW => operations.push((Intruction::POW, vec![name_a, name_b])),
-                        Operator::MUL => operations.push((Intruction::MUL, vec![name_a, name_b])),
-                        Operator::DIV => operations.push((Intruction::DIV, vec![name_a, name_b])),
-                        Operator::MOD => operations.push((Intruction::MOD, vec![name_a, name_b])),
-                        Operator::ADD => operations.push((Intruction::ADD, vec![name_a, name_b])),
-                        Operator::SUB => operations.push((Intruction::SUB, vec![name_a, name_b])),
-                        Operator::BAND => operations.push((Intruction::BAND, vec![name_a, name_b])),
-                        Operator::XOR => operations.push((Intruction::XOR, vec![name_a, name_b])),
-                        Operator::BOR => operations.push((Intruction::BOR, vec![name_a, name_b])),
-                        Operator::EQUAL => operations.push((Intruction::EQU, vec![name_a, name_b])),
-                        Operator::NOT_EQUAL => {
+                        Operator::Pow => operations.push((Intruction::POW, vec![name_a, name_b])),
+                        Operator::Mul => operations.push((Intruction::MUL, vec![name_a, name_b])),
+                        Operator::Div => operations.push((Intruction::DIV, vec![name_a, name_b])),
+                        Operator::Mod => operations.push((Intruction::MOD, vec![name_a, name_b])),
+                        Operator::Add => operations.push((Intruction::ADD, vec![name_a, name_b])),
+                        Operator::Sub => operations.push((Intruction::SUB, vec![name_a, name_b])),
+                        Operator::Band => operations.push((Intruction::BAND, vec![name_a, name_b])),
+                        Operator::Xor => operations.push((Intruction::XOR, vec![name_a, name_b])),
+                        Operator::Bor => operations.push((Intruction::BOR, vec![name_a, name_b])),
+                        Operator::Equal => operations.push((Intruction::EQU, vec![name_a, name_b])),
+                        Operator::NotEqual => {
                             operations.push((Intruction::NEQU, vec![name_a, name_b]))
                         }
-                        Operator::GREATER_EQUAL => {
+                        Operator::GreaterEqual => {
                             operations.push((Intruction::EGRE, vec![name_a, name_b]))
                         }
-                        Operator::LESSER_EQUAL => {
+                        Operator::LesserEqual => {
                             operations.push((Intruction::ELES, vec![name_a, name_b]))
                         }
-                        Operator::GREATER => {
+                        Operator::Greater => {
                             operations.push((Intruction::GRE, vec![name_a, name_b]))
                         }
-                        Operator::LESSER => {
+                        Operator::Lesser => {
                             operations.push((Intruction::LES, vec![name_a, name_b]))
                         }
-                        Operator::AND => operations.push((Intruction::AND, vec![name_a, name_b])),
-                        Operator::OR => operations.push((Intruction::OR, vec![name_a, name_b])),
+                        Operator::And => operations.push((Intruction::AND, vec![name_a, name_b])),
+                        Operator::Or => operations.push((Intruction::OR, vec![name_a, name_b])),
                         _ => break,
                     },
                 }
