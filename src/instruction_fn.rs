@@ -20,7 +20,8 @@ pub fn assign(
         Kind::BigInt => vec_table.set_bigint(name_a, var_b.get_bigint(name_b, table).unwrap()),
         Kind::Bool => vec_table.set_bool(name_a, var_b.get_bool(name_b, table).unwrap()),
         Kind::Null => vec_table.set_null(name_a),
-        _ => {}
+        Kind::Tuple => vec_table.set_tuple(name_a, var_b.get_tuple(name_b, table).unwrap()),
+        Kind::Operator | Kind::Function => {}
     }
 }
 

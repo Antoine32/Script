@@ -315,7 +315,12 @@ impl Process {
                             Kind::Bool => this
                                 .table
                                 .set_bool(name, var.get_bool(real_name, level).unwrap()),
-                            _ => {}
+                            Kind::Tuple => this
+                                .table
+                                .set_tuple(name, var.get_tuple(real_name, level).unwrap()),
+                            Kind::Null => this.table.set_null(name),
+                            Kind::Operator => {}
+                            Kind::Function => {}
                         },
                         None => {}
                     }
@@ -408,6 +413,11 @@ impl Process {
                             &this.table,
                         );
                     }
+                }
+                Intruction::TUP => {
+                    let mut tuple = vars[0].get_tuple(&names[0], &this.table).unwrap();
+                    tuple.push(&vars[1], &names[1], &this.table);
+                    this.table.set_tuple(&names[0], tuple);
                 }
             }
         }
@@ -552,6 +562,9 @@ fn convert(
                         Operator::And => operations.push((Intruction::AND, vec![name_a, name_b])),
                         Operator::Or => operations.push((Intruction::OR, vec![name_a, name_b])),
                         Operator::Return => operations.push((Intruction::END, vec![name_b])),
+                        Operator::Separator => {
+                            operations.push((Intruction::TUP, vec![name_a, name_b]))
+                        }
                         _ => break,
                     },
                 }

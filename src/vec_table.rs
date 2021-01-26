@@ -1,5 +1,6 @@
 use crate::function::*;
 use crate::table::*;
+use crate::tuple::*;
 use crate::variable::*;
 use num::BigInt;
 
@@ -77,6 +78,10 @@ impl VecTable {
         self.tables[level].set_bool(entry, value);
     }
 
+    pub fn set_tuple_specified(&mut self, level: usize, entry: &str, value: Tuple) {
+        self.tables[level].set_tuple(entry, value);
+    }
+
     pub fn set_null_specified(&mut self, level: usize, entry: &str) {
         self.tables[level].set_null(entry);
     }
@@ -127,6 +132,17 @@ impl VecTable {
         }
 
         self.set_bool_specified(self.tables.len() - 1, entry, value);
+    }
+
+    pub fn set_tuple(&mut self, entry: &str, value: Tuple) {
+        for i in (0..(self.tables.len())).rev() {
+            if self.tables[i].contains(entry) {
+                self.set_tuple_specified(i, entry, value);
+                return;
+            }
+        }
+
+        self.set_tuple_specified(self.tables.len() - 1, entry, value);
     }
 
     pub fn set_null(&mut self, entry: &str) {

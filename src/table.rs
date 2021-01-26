@@ -133,7 +133,7 @@ impl Table {
                     Kind::Bool => Variable::new_bool(pos),
                     Kind::Function => Variable::new_function(pos),
                     Kind::Tuple => Variable::new_tuple(pos),
-                    _ => Variable::new_null(pos),
+                    Kind::Null | Kind::Operator => Variable::new_null(pos),
                 };
 
                 self.variables.insert(entry.to_string(), var);

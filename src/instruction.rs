@@ -23,6 +23,7 @@ pub enum Intruction {
     ELES, // lesser-then or equal <=
     GOTO, // classic goto with the name of the function instead of the line
     END,  // end current process whether it be a function, a thread or the main program
+    TUP,  // , make into a tuple
 }
 
 impl Intruction {
@@ -49,6 +50,7 @@ impl Intruction {
             Self::ELES => 18,
             Self::GOTO => 19,
             Self::END => 20,
+            Self::TUP => 21,
         }
     }
 }
@@ -77,6 +79,7 @@ impl std::fmt::Display for Intruction {
             Self::ELES => write!(f, "ELES"),
             Self::GOTO => write!(f, "GOTO"),
             Self::END => write!(f, "END"),
+            Self::TUP => write!(f, "TUP"),
         }
     }
 }
@@ -105,6 +108,7 @@ impl std::cmp::PartialEq for Intruction {
             Self::ELES => matches!(other, Self::ELES),
             Self::GOTO => matches!(other, Self::GOTO),
             Self::END => matches!(other, Self::END),
+            Self::TUP => matches!(other, Self::TUP),
         }
     }
 }
@@ -133,6 +137,7 @@ impl Clone for Intruction {
             Self::ELES => Self::ELES,
             Self::GOTO => Self::GOTO,
             Self::END => Self::END,
+            Self::TUP => Self::TUP,
         }
     }
 }
