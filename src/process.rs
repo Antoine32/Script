@@ -425,7 +425,14 @@ impl Process {
 
             match *instruction {
                 Intruction::ASG => {
-                    assign(&vars[1], &names[0], &names[1], &mut this.table, vec_table);
+                    assign(
+                        &vars[0],
+                        &vars[1],
+                        &names[0],
+                        &names[1],
+                        &mut this.table,
+                        vec_table,
+                    );
                 }
                 Intruction::NOT => {
                     this.table.set_bool(
@@ -480,7 +487,14 @@ impl Process {
 
                     let tuple = {
                         if names.len() > 0 {
-                            Tuple::from(&names.iter().map(|n| n.as_str()).collect(), &this.table)
+                            if vars[1].kind == Kind::Tuple {
+                                this.table.get_tuple(vars[1].pos)
+                            } else {
+                                Tuple::from(
+                                    &names.iter().map(|n| n.as_str()).collect(),
+                                    &this.table,
+                                )
+                            }
                         } else {
                             Tuple::new()
                         }
@@ -620,7 +634,8 @@ fn convert(
 
                 match operator.get_priority() {
                     P_ASSIGNEMENT => {
-                        let name_a_buf = get_real_name(&name_a).to_string();
+                        // let name_a_buf = get_real_name(&name_a).to_string();
+                        let name_a_buf = name_a.to_string();
                         let name_b_buf = name_b.to_string();
 
                         match operator {

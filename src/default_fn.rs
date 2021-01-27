@@ -122,21 +122,27 @@ fn read() -> Tuple {
     return tuple;
 }
 
-const NTH_ARGS: [&str; 1] = ["num"];
+const NTH_ARGS: [&str; 2] = ["num_a", "num_b"];
 
 fn nth(vec_table: &mut VecTable) -> Tuple {
-    let mut num: f64 = 0.0;
+    let mut num_a: f64 = get_number(vec_table, NTH_ARGS[0]);
+    let mut num_b: f64 = get_number(vec_table, NTH_ARGS[1]);
 
-    match vec_table.get(NTH_ARGS[0]) {
-        Some((level, var)) => num = var.get_number(PRINT_ARGS[0], level).unwrap(),
-        None => {}
-    }
-
-    num *= num;
+    num_a *= num_a;
+    num_b *= num_b;
 
     let mut tuple = Tuple::new();
-    tuple.set_number("num", num);
-    tuple.set_number("num", num);
+    tuple.set_number("num_a", num_a);
+    tuple.set_number("num_b", num_b);
 
     return tuple;
+}
+
+fn get_number(vec_table: &mut VecTable, entry: &str) -> f64 {
+    let table = vec_table.get_level(vec_table.len() - 1);
+
+    match table.get(entry).get_number(entry, table) {
+        Ok(num) => num,
+        Err(_) => 0.0,
+    }
 }
