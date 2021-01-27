@@ -1,6 +1,7 @@
+use crate::table::*;
 use crate::tuple::*;
 use crate::vec_table::*;
-use crate::CHAR_SEP_NAME;
+use num::{BigInt, Zero};
 
 #[allow(unused_imports)]
 use crate::{eprint, eprintln};
@@ -8,7 +9,7 @@ use crate::{eprint, eprintln};
 pub const DEFAULTS_FUNCTIONS: [DefaultFunction; 3] = [
     DefaultFunction::Print,
     DefaultFunction::Read,
-    DefaultFunction::Nth,
+    DefaultFunction::Int,
 ];
 
 pub const DEFAULTS_FUNCTIONS_STR: [&str; DEFAULTS_FUNCTIONS.len()] = [
@@ -26,11 +27,11 @@ pub const DEFAULTS_FUNCTIONS_ARGS: [&[&str]; DEFAULTS_FUNCTIONS.len()] = [
 pub enum DefaultFunction {
     Print,
     Read,
-    Nth,
+    Int,
 }
 
 impl DefaultFunction {
-    pub fn from_string(string: &str) -> Option<Self> {
+    /*pub fn from_string(string: &str) -> Option<Self> {
         for i in 0..(DEFAULTS_FUNCTIONS_STR.len()) {
             if DEFAULTS_FUNCTIONS_STR[i] == string {
                 return Some(DEFAULTS_FUNCTIONS[i]);
@@ -38,13 +39,13 @@ impl DefaultFunction {
         }
 
         return None;
-    }
+    }*/
 
     pub const fn get_str(&self) -> &str {
         match self {
             Self::Print => "print()",
             Self::Read => "read()",
-            Self::Nth => "nth()",
+            Self::Int => "int()",
         }
     }
 
@@ -52,7 +53,7 @@ impl DefaultFunction {
         match self {
             Self::Print => &PRINT_ARGS,
             Self::Read => &READ_ARGS,
-            Self::Nth => &NTH_ARGS,
+            Self::Int => &INT_ARGS,
         }
     }
 
@@ -60,7 +61,7 @@ impl DefaultFunction {
         match self {
             Self::Print => print(vec_table),
             Self::Read => read(),
-            Self::Nth => nth(vec_table),
+            Self::Int => int(vec_table),
         }
     }
 }
@@ -76,7 +77,7 @@ impl std::cmp::PartialEq for DefaultFunction {
         match self {
             Self::Print => matches!(other, Self::Print),
             Self::Read => matches!(other, Self::Read),
-            Self::Nth => matches!(other, Self::Nth),
+            Self::Int => matches!(other, Self::Int),
         }
     }
 }
@@ -86,20 +87,28 @@ impl Clone for DefaultFunction {
         match self {
             Self::Print => Self::Print,
             Self::Read => Self::Read,
-            Self::Nth => Self::Nth,
+            Self::Int => Self::Int,
         }
     }
 }
 
 impl Copy for DefaultFunction {}
 
-const PRINT_ARGS: [&str; 1] = ["text"];
+const PRINT_ARGS: [&str; 1] = ["text#"]; // meant to end with ENUMERATE_ARGS, if ENUMERATE_ARGS isn't "#" anymore or doesn't exist please fix this
 
 fn print(vec_table: &mut VecTable) -> Tuple {
-    match vec_table.get(PRINT_ARGS[0]) {
-        Some((level, var)) => println!("{}", var.get_string(PRINT_ARGS[0], level).unwrap()),
-        None => println!(""),
+    let table = vec_table.get_level(vec_table.len() - 1);
+
+    let text = get_tuple(table, "text");
+
+    for i in 0..(text.len()) {
+        match text.get(i).get_string(text.get_name(i), &text.table) {
+            Ok(string) => print!("{}", string),
+            Err(err) => print!("{}", err),
+        }
     }
+
+    println!("");
 
     return Tuple::new();
 }
@@ -112,9 +121,21 @@ fn read() -> Tuple {
         .read_line(&mut input)
         .expect("error: unable to read user input");
 
-    input = input
-        .trim_end_matches(|ch| ch == 13 as char || ch == 10 as char)
-        .to_string();
+    if input.len() > 0 {
+        let ch = input.chars().nth(input.len() - 1).unwrap();
+
+        if ch == 13 as char {
+            input.pop();
+        }
+    }
+
+    if input.len() > 0 {
+        let ch = input.chars().nth(input.len() - 1).unwrap();
+
+        if ch == 10 as char {
+            input.pop();
+        }
+    }
 
     let mut tuple = Tuple::new();
     tuple.set_string("input", input);
@@ -122,27 +143,37 @@ fn read() -> Tuple {
     return tuple;
 }
 
-const NTH_ARGS: [&str; 2] = ["num_a", "num_b"];
+const INT_ARGS: [&str; 1] = ["num"];
 
-fn nth(vec_table: &mut VecTable) -> Tuple {
-    let mut num_a: f64 = get_number(vec_table, NTH_ARGS[0]);
-    let mut num_b: f64 = get_number(vec_table, NTH_ARGS[1]);
-
-    num_a *= num_a;
-    num_b *= num_b;
+fn int(vec_table: &mut VecTable) -> Tuple {
+    let table = vec_table.get_level(vec_table.len() - 1);
 
     let mut tuple = Tuple::new();
-    tuple.set_number("num_a", num_a);
-    tuple.set_number("num_b", num_b);
+    tuple.set_bigint("int", get_bigint(table, "num"));
 
     return tuple;
 }
 
-fn get_number(vec_table: &mut VecTable, entry: &str) -> f64 {
-    let table = vec_table.get_level(vec_table.len() - 1);
-
+#[allow(dead_code)]
+fn get_number(table: &mut Table, entry: &str) -> f64 {
     match table.get(entry).get_number(entry, table) {
         Ok(num) => num,
         Err(_) => 0.0,
+    }
+}
+
+#[allow(dead_code)]
+fn get_bigint(table: &mut Table, entry: &str) -> BigInt {
+    match table.get(entry).get_bigint(entry, table) {
+        Ok(bigint) => bigint,
+        Err(_) => BigInt::zero(),
+    }
+}
+
+#[allow(dead_code)]
+fn get_tuple(table: &mut Table, entry: &str) -> Tuple {
+    match table.get(entry).get_tuple(entry, table) {
+        Ok(tuple) => tuple,
+        Err(_) => Tuple::new(),
     }
 }
