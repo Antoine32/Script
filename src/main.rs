@@ -3,9 +3,6 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use std::time::{Duration, Instant};
 
-#[cfg(feature = "multithread")]
-use std::{sync::mpsc::sync_channel, thread};
-
 mod default_fn;
 mod function;
 mod instruction;
@@ -172,29 +169,6 @@ pub fn decode_string(string: &str) -> String {
     return val;
 }
 
-#[cfg(feature = "multithread")]
-pub fn new_thread(
-    receivers: &mut Vec<std::sync::mpsc::Receiver<(Process, String)>>,
-    lines: &mut Vec<String>,
-    n: &mut usize,
-) {
-    match lines.pop() {
-        Some(line) => {
-            let (sender, receiver_ext) = sync_channel(2);
-            receivers.push(receiver_ext);
-
-            let na = *n;
-
-            thread::spawn(move || {
-                sender.send(Process::from(line, na)).unwrap();
-            });
-
-            *n += 1;
-        }
-        None => {}
-    }
-}
-
 pub fn process_text(content: String, vec_table: &mut VecTable) -> Process {
     let mut lines: Vec<String> = content
         .replace(";\n", "\n")
@@ -208,36 +182,12 @@ pub fn process_text(content: String, vec_table: &mut VecTable) -> Process {
 
     let mut n: usize = 0;
 
-    #[cfg(not(feature = "multithread"))]
-    {
-        while lines.len() > 0 {
-            #[allow(unused_variables)]
-            let (processed_line, to_print) = Process::from(lines.pop().unwrap(), n, vec_table);
-            process_lines.merge(processed_line);
-            eprintln!("{}", to_print);
+    while lines.len() > 0 {
+        #[allow(unused_variables)]
+        let (processed_line, _) = Process::from(lines.pop().unwrap(), &mut n, vec_table);
+        process_lines.merge(processed_line);
 
-            n += 1;
-        }
-    }
-
-    #[cfg(feature = "multithread")]
-    {
-        let len = lines.len();
-
-        let mut receivers: Vec<std::sync::mpsc::Receiver<(Process, String)>> =
-            Vec::with_capacity(len);
-
-        while lines.len() > 0 {
-            new_thread(&mut receivers, &mut lines, &mut n);
-        }
-
-        for i in 0..(receivers.len()) {
-            #[allow(unused_variables)]
-            let (processed_line, to_print) = receivers[i].recv().unwrap();
-            process_lines.merge(processed_line);
-
-            eprintln!("{}", to_print);
-        }
+        n += 1;
     }
 
     return process_lines;
@@ -253,13 +203,13 @@ fn time_taken(elapsed: Duration) -> String {
 
     let mut string = String::new();
 
-    string.push_str(&format!("----------------- Time taken -----------------\n"));
+    //string.push_str(&format!("----------------- Time taken -----------------\n"));
     string.push_str(&format!("Hour   : {}\n", hour));
     string.push_str(&format!("Minute : {}\n", min));
     string.push_str(&format!("Second : {}\n", sec));
     string.push_str(&format!("Millis : {}\n", millis));
     string.push_str(&format!("Micros : {}\n", micros));
-    string.push_str(&format!("Nanos  : {}\n\n", nano));
+    string.push_str(&format!("Nanos  : {}\n", nano));
 
     return string;
 }
@@ -290,7 +240,9 @@ fn main() {
 
     let time_c = timer_a.elapsed();
 
-    println!("\nTime A: \n{}", time_taken(time_a));
-    println!("\nTime B: \n{}", time_taken(time_b));
-    println!("\nTime C: \n{}", time_taken(time_c));
+    println!("\n----------------- Time taken -----------------");
+
+    println!("\nInterpretation Time :\n{}", time_taken(time_a));
+    println!("\nExecution Time :\n{}", time_taken(time_b));
+    println!("\nTotal Time :\n{}", time_taken(time_c));
 }

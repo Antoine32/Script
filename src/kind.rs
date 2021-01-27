@@ -15,18 +15,24 @@ pub enum Kind {
     Tuple,
 }
 
+impl Kind {
+    pub const fn get_str(&self) -> &str {
+        match self {
+            Self::String => "string",
+            Self::Number => "number",
+            Self::BigInt => "bigint",
+            Self::Bool => "bool",
+            Self::Operator => "operator",
+            Self::Null => "null",
+            Self::Function => "function",
+            Self::Tuple => "tuple",
+        }
+    }
+}
+
 impl std::fmt::Display for Kind {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Self::String => write!(f, "string"),
-            Self::Number => write!(f, "number"),
-            Self::BigInt => write!(f, "bigint"),
-            Self::Bool => write!(f, "bool"),
-            Self::Operator => write!(f, "operator"),
-            Self::Null => write!(f, "null"),
-            Self::Function => write!(f, "function"),
-            Self::Tuple => write!(f, "tuple"),
-        }
+        write!(f, "{}", self.get_str())
     }
 }
 

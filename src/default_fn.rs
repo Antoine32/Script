@@ -5,22 +5,28 @@ use crate::CHAR_SEP_NAME;
 #[allow(unused_imports)]
 use crate::{eprint, eprintln};
 
-pub const DEFAULTS_FUNCTIONS: [DefaultFunction; 2] =
-    [DefaultFunction::Print, DefaultFunction::Read];
+pub const DEFAULTS_FUNCTIONS: [DefaultFunction; 3] = [
+    DefaultFunction::Print,
+    DefaultFunction::Read,
+    DefaultFunction::Nth,
+];
 
 pub const DEFAULTS_FUNCTIONS_STR: [&str; DEFAULTS_FUNCTIONS.len()] = [
     DEFAULTS_FUNCTIONS[0].get_str(),
     DEFAULTS_FUNCTIONS[1].get_str(),
+    DEFAULTS_FUNCTIONS[2].get_str(),
 ];
 
 pub const DEFAULTS_FUNCTIONS_ARGS: [&[&str]; DEFAULTS_FUNCTIONS.len()] = [
     DEFAULTS_FUNCTIONS[0].get_arguments(),
     DEFAULTS_FUNCTIONS[1].get_arguments(),
+    DEFAULTS_FUNCTIONS[2].get_arguments(),
 ];
 
 pub enum DefaultFunction {
     Print,
     Read,
+    Nth,
 }
 
 impl DefaultFunction {
@@ -38,6 +44,7 @@ impl DefaultFunction {
         match self {
             Self::Print => "print()",
             Self::Read => "read()",
+            Self::Nth => "nth()",
         }
     }
 
@@ -45,13 +52,15 @@ impl DefaultFunction {
         match self {
             Self::Print => &PRINT_ARGS,
             Self::Read => &READ_ARGS,
+            Self::Nth => &NTH_ARGS,
         }
     }
 
-    pub fn run(&self, tuple: &mut VecTable) -> Tuple {
+    pub fn run(&self, vec_table: &mut VecTable) -> Tuple {
         match self {
-            Self::Print => print(tuple),
+            Self::Print => print(vec_table),
             Self::Read => read(),
+            Self::Nth => nth(vec_table),
         }
     }
 }
@@ -67,6 +76,7 @@ impl std::cmp::PartialEq for DefaultFunction {
         match self {
             Self::Print => matches!(other, Self::Print),
             Self::Read => matches!(other, Self::Read),
+            Self::Nth => matches!(other, Self::Nth),
         }
     }
 }
@@ -76,6 +86,7 @@ impl Clone for DefaultFunction {
         match self {
             Self::Print => Self::Print,
             Self::Read => Self::Read,
+            Self::Nth => Self::Nth,
         }
     }
 }
@@ -106,7 +117,32 @@ fn read() -> Tuple {
         .to_string();
 
     let mut tuple = Tuple::new();
-    tuple.set_string("", input);
+    tuple.set_string("input", input);
 
     return tuple;
+}
+
+const NTH_ARGS: [&str; 2] = ["num_a", "num_b"];
+
+fn nth(vec_table: &mut VecTable) -> Tuple {
+    let mut num_a: f64 = get_number(vec_table, NTH_ARGS[0]);
+    let mut num_b: f64 = get_number(vec_table, NTH_ARGS[1]);
+
+    num_a *= num_a;
+    num_b *= num_b;
+
+    let mut tuple = Tuple::new();
+    tuple.set_number("num_a", num_a);
+    tuple.set_number("num_b", num_b);
+
+    return tuple;
+}
+
+fn get_number(vec_table: &mut VecTable, entry: &str) -> f64 {
+    let table = vec_table.get_level(vec_table.len() - 1);
+
+    match table.get(entry).get_number(entry, table) {
+        Ok(num) => num,
+        Err(_) => 0.0,
+    }
 }

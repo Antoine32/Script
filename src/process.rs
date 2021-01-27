@@ -33,13 +33,13 @@ impl Process {
         self.table.merge(other.table);
     }
 
-    pub fn from(mut line: String, mut line_num: usize, vec_table: &mut VecTable) -> (Self, String) {
+    pub fn from(
+        mut line: String,
+        line_num: &mut usize,
+        vec_table: &mut VecTable,
+    ) -> (Self, String) {
         line = line.trim().to_string();
         let mut this = Self::new();
-
-        #[cfg(feature = "print")]
-        let mut to_print_vec: Vec<String> = Vec::new();
-
         let mut at = 0;
 
         while at < line.len() {
@@ -74,46 +74,14 @@ impl Process {
             }
 
             if count_dec == count_inc && count_inc > 0 {
-                let (other, _string) = Self::from(
+                let (other, name) = Self::from(
                     line.get((pos_inc + 1)..pos_dec).unwrap().to_string(),
                     line_num,
                     vec_table,
                 );
 
-                let mut name;
-
-                if other.table.variables.len() > 0 {
-                    name = other.table.variables.iter().nth(0).unwrap().0.clone();
-
-                    let mut min = name
-                        .split(CHAR_SEP_NAME)
-                        .nth(1)
-                        .unwrap()
-                        .parse::<usize>()
-                        .unwrap();
-
-                    for (n, _) in other.table.variables.iter() {
-                        let num = n
-                            .split(CHAR_SEP_NAME)
-                            .nth(1)
-                            .unwrap()
-                            .parse::<usize>()
-                            .unwrap();
-
-                        if num < min {
-                            name = n.clone();
-                            min = num;
-                        }
-                    }
-                } else {
-                    name = String::from("");
-                }
-
                 this.merge(other);
-                line_num += 1;
-
-                #[cfg(feature = "print")]
-                to_print_vec.push(_string);
+                *line_num += 1;
 
                 let mult = (
                     line.get(0..(pos_inc + 1)).unwrap(),
@@ -128,8 +96,7 @@ impl Process {
             }
         }
 
-        #[cfg(feature = "print")]
-        to_print_vec.push(format!("\n{}: {} \t|{}|\n", line_num, line.len(), line));
+        eprintln!("\n{}: {} \t|{}|\n", line_num, line.len(), line);
 
         fn add_variable(
             table: &mut Table,
@@ -139,8 +106,8 @@ impl Process {
             operator_order: &mut Vec<Vec<usize>>,
             mut raw_value: &str,
             kind: Kind,
-            line_num: usize,
-        ) -> String {
+            line_num: &mut usize,
+        ) {
             *last_kind = kind;
             *last_raw_value = raw_value.to_string();
 
@@ -166,7 +133,7 @@ impl Process {
                         last_raw_value,
                         entry_list,
                         operator_order,
-                        "☺",
+                        Operator::UseFunction.get_str(),
                         Kind::Operator,
                         line_num,
                     );
@@ -224,12 +191,7 @@ impl Process {
 
                     entry_list.push(name);
                 }
-
-                #[cfg(feature = "print")]
-                return format!("|{}|, {}, {}", raw_value, kind, raw_value.len());
             }
-
-            return String::new();
         }
 
         let mut table = Table::new();
@@ -249,13 +211,10 @@ impl Process {
             if !(c.is_whitespace() || c == '(' || c == ')') {
                 let (raw_value, kind) = get_kind(line_char.get(n..).unwrap());
 
-                if raw_value == "-" && last_kind == Kind::Operator {
-                    if last_raw_value.as_str() == "+" {
+                if raw_value == Operator::Sub.get_str() && last_kind == Kind::Operator {
+                    if last_raw_value.as_str() == Operator::Add.get_str() {
                         operator_order[P_ADD_SUB as usize].pop();
                         entry_list.pop();
-
-                        #[cfg(feature = "print")]
-                        to_print_vec.pop();
 
                         #[allow(unused_variables)]
                         let buf = add_variable(
@@ -268,9 +227,6 @@ impl Process {
                             kind,
                             line_num,
                         );
-
-                        #[cfg(feature = "print")]
-                        to_print_vec.push(buf);
                     } else {
                         #[allow(unused_variables)]
                         let buf = add_variable(
@@ -284,9 +240,6 @@ impl Process {
                             line_num,
                         );
 
-                        #[cfg(feature = "print")]
-                        to_print_vec.push(buf);
-
                         #[allow(unused_variables)]
                         let buf = add_variable(
                             &mut table,
@@ -294,13 +247,10 @@ impl Process {
                             &mut last_raw_value,
                             &mut entry_list,
                             &mut operator_order,
-                            "*",
+                            Operator::Mul.get_str(),
                             Kind::Operator,
                             line_num,
                         );
-
-                        #[cfg(feature = "print")]
-                        to_print_vec.push(buf);
                     }
                 } else {
                     #[allow(unused_variables)]
@@ -314,9 +264,6 @@ impl Process {
                         kind,
                         line_num,
                     );
-
-                    #[cfg(feature = "print")]
-                    to_print_vec.push(buf);
                 }
 
                 n += raw_value.len();
@@ -347,6 +294,46 @@ impl Process {
             }
         }
 
+        #[cfg(feature = "print")]
+        for p in entry_list.iter() {
+            let var = table.get(p);
+            let real_name = get_real_name(p);
+            let name = p.trim_start_matches(real_name);
+
+            eprintln!(
+                "{} \t| {} \t{}: {}{}{}",
+                name,
+                var.kind,
+                {
+                    if var.kind.get_str().len() < 5 {
+                        "\t"
+                    } else {
+                        ""
+                    }
+                },
+                var.get_string(p, &table).unwrap(),
+                {
+                    if real_name.len() > 0 {
+                        "\t -> "
+                    } else {
+                        ""
+                    }
+                },
+                real_name
+            );
+        }
+
+        let mut name = String::new();
+
+        for p in entry_list.iter() {
+            let var = table.get(p);
+
+            if var.kind != Kind::Operator {
+                name = p.clone();
+                break;
+            }
+        }
+
         let operations = convert(
             table.clone(),
             &mut entry_list,
@@ -356,25 +343,14 @@ impl Process {
         );
 
         table.clear_operator();
-        if vec_table.len() == 1 {
-            table.clear_null();
-        }
-
-        #[allow(unused_mut)]
-        let mut to_print = String::new();
-
-        #[cfg(feature = "print")]
-        for p in to_print_vec.iter() {
-            to_print.push_str(p);
-            to_print.push('\n');
-        }
+        table.clear_null();
 
         this.merge(Process {
             table: table,
             operations: operations,
         });
 
-        return (this, to_print);
+        return (this, name);
     }
 
     #[cfg(feature = "print")]
@@ -449,7 +425,14 @@ impl Process {
 
             match *instruction {
                 Intruction::ASG => {
-                    assign(&vars[1], &names[0], &names[1], &mut this.table, vec_table);
+                    assign(
+                        &vars[0],
+                        &vars[1],
+                        &names[0],
+                        &names[1],
+                        &mut this.table,
+                        vec_table,
+                    );
                 }
                 Intruction::NOT => {
                     this.table.set_bool(
@@ -504,7 +487,14 @@ impl Process {
 
                     let tuple = {
                         if names.len() > 0 {
-                            Tuple::from(&names.iter().map(|n| n.as_str()).collect(), &this.table)
+                            if vars[1].kind == Kind::Tuple {
+                                this.table.get_tuple(vars[1].pos)
+                            } else {
+                                Tuple::from(
+                                    &names.iter().map(|n| n.as_str()).collect(),
+                                    &this.table,
+                                )
+                            }
                         } else {
                             Tuple::new()
                         }
@@ -518,7 +508,7 @@ impl Process {
                                 .run(&tuple, self, vec_table);
 
                             match tuple_b.len() {
-                                0 => this.table.set_null(&name, false),
+                                0 => this.table.set_null(&name, true),
                                 1 => {
                                     let var = tuple_b.get(0);
 
@@ -540,7 +530,7 @@ impl Process {
                                             .set_tuple(&name, tuple_b.table.get_tuple(var.pos)),
                                         Kind::Function => {}
                                         Kind::Operator => {}
-                                        Kind::Null => this.table.set_null(&name, false),
+                                        Kind::Null => this.table.set_null(&name, true),
                                     };
                                 }
                                 _ => this.table.set_tuple(&name, tuple_b),
@@ -644,7 +634,8 @@ fn convert(
 
                 match operator.get_priority() {
                     P_ASSIGNEMENT => {
-                        let name_a_buf = get_real_name(&name_a).to_string();
+                        // let name_a_buf = get_real_name(&name_a).to_string();
+                        let name_a_buf = name_a.to_string();
                         let name_b_buf = name_b.to_string();
 
                         match operator {

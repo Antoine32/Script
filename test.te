@@ -1,1 +1,9 @@
-fn 
+a = 5 * (9 - 3)
+b = a ** (8 / 9)
+
+c, d = nth(a, b)
+
+print(a + " * " + a + " = " + c)
+print(b + " * " + b + " = " + d)
+
+print(read())

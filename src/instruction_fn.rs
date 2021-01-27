@@ -1,3 +1,4 @@
+use crate::get_real_name;
 use crate::kind::*;
 use crate::table::*;
 use crate::variable::*;
@@ -8,19 +9,64 @@ use num::{BigInt, One, Signed, Zero};
 use crate::{eprint, eprintln};
 
 pub fn assign(
+    var_a: &Variable,
     var_b: &Variable,
     name_a: &str,
     name_b: &str,
     table: &mut Table,
     vec_table: &mut VecTable,
 ) {
+    let real_name = get_real_name(name_a);
+
     match var_b.kind {
-        Kind::String => vec_table.set_string(name_a, var_b.get_string(name_b, table).unwrap()),
-        Kind::Number => vec_table.set_number(name_a, var_b.get_number(name_b, table).unwrap()),
-        Kind::BigInt => vec_table.set_bigint(name_a, var_b.get_bigint(name_b, table).unwrap()),
-        Kind::Bool => vec_table.set_bool(name_a, var_b.get_bool(name_b, table).unwrap()),
-        Kind::Null => vec_table.set_null(name_a),
-        Kind::Tuple => vec_table.set_tuple(name_a, var_b.get_tuple(name_b, table).unwrap()),
+        Kind::String => vec_table.set_string(real_name, var_b.get_string(name_b, table).unwrap()),
+        Kind::Number => vec_table.set_number(real_name, var_b.get_number(name_b, table).unwrap()),
+        Kind::BigInt => vec_table.set_bigint(real_name, var_b.get_bigint(name_b, table).unwrap()),
+        Kind::Bool => vec_table.set_bool(real_name, var_b.get_bool(name_b, table).unwrap()),
+        Kind::Null => vec_table.set_null(real_name),
+        Kind::Tuple => {
+            let pre = vec_table.get(real_name);
+            let mut modify = var_a.kind == Kind::Tuple
+                && (pre.is_none() || (pre.unwrap().1.kind != Kind::Tuple));
+
+            if modify {
+                let tuple_a = table.get_tuple(var_a.pos);
+
+                for n in tuple_a.order.iter() {
+                    if get_real_name(n).len() == 0 {
+                        modify = false;
+                        break;
+                    }
+                }
+            }
+
+            if modify {
+                let tuple_a = table.get_tuple(var_a.pos);
+                let tuple_b = table.get_tuple(var_b.pos);
+
+                let len = {
+                    if tuple_a.len() < tuple_b.len() {
+                        tuple_a.len()
+                    } else {
+                        tuple_b.len()
+                    }
+                };
+
+                for i in 0..len {
+                    let vart_a = tuple_a.get(i);
+                    let vart_b = tuple_b.get(i);
+
+                    let namet_a = tuple_a.get_name(i);
+                    let namet_b = tuple_b.get_name(i);
+
+                    let tablet_b = &mut table.get_tuple(var_b.pos).table;
+
+                    assign(vart_a, vart_b, namet_a, namet_b, tablet_b, vec_table);
+                }
+            } else {
+                vec_table.set_tuple(real_name, var_b.get_tuple(name_b, table).unwrap());
+            }
+        }
         Kind::Operator | Kind::Function => {}
     }
 }
