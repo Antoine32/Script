@@ -5,6 +5,7 @@ use crate::kind::*;
 use crate::operation::*;
 use crate::table::*;
 use crate::tuple::*;
+use crate::usize_to_string;
 use crate::variable::*;
 use crate::vec_table::*;
 use crate::CHAR_SEP_NAME;
@@ -74,11 +75,15 @@ impl Process {
             }
 
             if count_dec == count_inc && count_inc > 0 {
-                let (other, name) = Self::from(
+                let (other, mut name) = Self::from(
                     line.get((pos_inc + 1)..pos_dec).unwrap().to_string(),
                     line_num,
                     vec_table,
                 );
+
+                if name.contains("(") {
+                    name = name.trim_start_matches(get_real_name(&name)).to_string();
+                }
 
                 this.merge(other);
                 *line_num += 1;
@@ -161,9 +166,9 @@ impl Process {
                             }
                         },
                         CHAR_SEP_NAME,
-                        entry_list.len(),
+                        usize_to_string(entry_list.len()),
                         CHAR_SEP_NAME,
-                        line_num
+                        usize_to_string(*line_num)
                     );
                     match kind {
                         Kind::Null => {
@@ -499,6 +504,8 @@ impl Process {
                             Tuple::new()
                         }
                     };
+
+                    let name = name.trim_start_matches(real_name);
 
                     match vec_table.get(real_name) {
                         Some((level, var)) => {

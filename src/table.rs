@@ -4,7 +4,7 @@ use crate::operation::*;
 use crate::tuple::*;
 use crate::variable::*;
 use crate::vec_free::*;
-use crate::{decode_string, string_to_usize, CHAR_SEP_NAME};
+use crate::{decode_string, CHAR_SEP_NAME};
 use num::BigInt;
 use std::collections::HashMap;
 
@@ -299,6 +299,10 @@ impl Table {
 
     pub fn get_mut_bool(&mut self, pos: usize) -> &mut bool {
         &mut self.vec_bool[pos]
+    }
+
+    pub fn get_mut_tuple(&mut self, pos: usize) -> &mut Tuple {
+        &mut self.vec_tuple[pos]
     }
 
     pub fn remove_entry(&mut self, entry: &str) {

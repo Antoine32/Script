@@ -81,15 +81,15 @@ pub fn addition(var_a: &Variable, var_b: &Variable, name_a: &str, name_b: &str, 
                 var_b.get_string(name_b, table).unwrap()
             ),
         )
-    } else if var_a.kind == Kind::BigInt || var_b.kind == Kind::BigInt {
-        table.set_bigint(
-            name_a,
-            var_a.get_bigint(name_a, table).unwrap() + var_b.get_bigint(name_b, table).unwrap(),
-        )
-    } else {
+    } else if var_a.kind == Kind::Number || var_b.kind == Kind::Number {
         table.set_number(
             name_a,
             var_a.get_number(name_a, table).unwrap() + var_b.get_number(name_b, table).unwrap(),
+        )
+    } else {
+        table.set_bigint(
+            name_a,
+            var_a.get_bigint(name_a, table).unwrap() + var_b.get_bigint(name_b, table).unwrap(),
         )
     }
 }
@@ -101,7 +101,7 @@ pub fn substraction(
     name_b: &str,
     table: &mut Table,
 ) {
-    if var_a.kind == Kind::BigInt || var_b.kind == Kind::BigInt {
+    if var_a.kind == Kind::BigInt && var_b.kind == Kind::BigInt {
         table.set_bigint(
             name_a,
             var_a.get_bigint(name_a, table).unwrap() - var_b.get_bigint(name_b, table).unwrap(),
@@ -121,7 +121,7 @@ pub fn multiplication(
     name_b: &str,
     table: &mut Table,
 ) {
-    if var_a.kind == Kind::BigInt || var_b.kind == Kind::BigInt {
+    if var_a.kind == Kind::BigInt && var_b.kind == Kind::BigInt {
         table.set_bigint(
             name_a,
             var_a.get_bigint(name_a, table).unwrap() * var_b.get_bigint(name_b, table).unwrap(),
@@ -135,7 +135,11 @@ pub fn multiplication(
 }
 
 pub fn division(var_a: &Variable, var_b: &Variable, name_a: &str, name_b: &str, table: &mut Table) {
-    if var_a.kind == Kind::BigInt || var_b.kind == Kind::BigInt {
+    if var_a.kind == Kind::BigInt
+        && var_b.kind == Kind::BigInt
+        && (var_a.get_bigint(name_a, table).unwrap() % var_b.get_bigint(name_b, table).unwrap()
+            != BigInt::zero())
+    {
         table.set_bigint(
             name_a,
             var_a.get_bigint(name_a, table).unwrap() / var_b.get_bigint(name_b, table).unwrap(),
@@ -149,7 +153,7 @@ pub fn division(var_a: &Variable, var_b: &Variable, name_a: &str, name_b: &str, 
 }
 
 pub fn modulo(var_a: &Variable, var_b: &Variable, name_a: &str, name_b: &str, table: &mut Table) {
-    if var_a.kind == Kind::BigInt || var_b.kind == Kind::BigInt {
+    if var_a.kind == Kind::BigInt && var_b.kind == Kind::BigInt {
         let num_a = var_a.get_bigint(name_a, table).unwrap();
         let num_b = var_b.get_bigint(name_b, table).unwrap();
 
@@ -206,7 +210,7 @@ fn bigint_pow(mut a: BigInt, mut b: BigInt) -> BigInt {
 }
 
 pub fn power(var_a: &Variable, var_b: &Variable, name_a: &str, name_b: &str, table: &mut Table) {
-    if var_a.kind == Kind::BigInt || var_b.kind == Kind::BigInt {
+    if var_a.kind == Kind::BigInt && var_b.kind == Kind::BigInt {
         table.set_bigint(
             name_a,
             bigint_pow(
