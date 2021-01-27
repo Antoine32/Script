@@ -3,6 +3,7 @@ use crate::kind::*;
 use crate::table::*;
 use crate::variable::*;
 use crate::CHAR_SEP_NAME;
+use num::BigInt;
 
 #[allow(unused_imports)]
 use crate::{eprint, eprintln};
@@ -82,6 +83,36 @@ impl Tuple {
     pub fn set_string(&mut self, entry: &str, value: String) {
         let name = format!("{}{}{}", get_real_name(entry), CHAR_SEP_NAME, self.len());
         self.table.set_string(&name, value);
+        self.order.push(name);
+    }
+
+    pub fn set_number(&mut self, entry: &str, value: f64) {
+        let name = format!("{}{}{}", get_real_name(entry), CHAR_SEP_NAME, self.len());
+        self.table.set_number(&name, value);
+        self.order.push(name);
+    }
+
+    pub fn set_bigint(&mut self, entry: &str, value: BigInt) {
+        let name = format!("{}{}{}", get_real_name(entry), CHAR_SEP_NAME, self.len());
+        self.table.set_bigint(&name, value);
+        self.order.push(name);
+    }
+
+    pub fn set_bool(&mut self, entry: &str, value: bool) {
+        let name = format!("{}{}{}", get_real_name(entry), CHAR_SEP_NAME, self.len());
+        self.table.set_bool(&name, value);
+        self.order.push(name);
+    }
+
+    pub fn set_tuple(&mut self, entry: &str, value: Self) {
+        let name = format!("{}{}{}", get_real_name(entry), CHAR_SEP_NAME, self.len());
+        self.table.set_tuple(&name, value);
+        self.order.push(name);
+    }
+
+    pub fn set_null(&mut self, entry: &str) {
+        let name = format!("{}{}{}", get_real_name(entry), CHAR_SEP_NAME, self.len());
+        self.table.set_null(&name, true);
         self.order.push(name);
     }
 
