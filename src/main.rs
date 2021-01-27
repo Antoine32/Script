@@ -49,12 +49,12 @@ macro_rules! eprintln {
     }
 }
 
-// needs to not use CHAR_SEP_NAME
+// needs to not use CHAR_SEP_NAME or CHAR_FUNC
 pub fn usize_to_string(mut num: usize) -> String {
     let mut string = String::new();
     let mut vec_pow: Vec<u128> = Vec::new();
 
-    let init = 0x110000 - 1;
+    let init = 0x110000 - 2;
     vec_pow.push(1);
 
     let mut i = 1;
@@ -70,9 +70,9 @@ pub fn usize_to_string(mut num: usize) -> String {
         let fit = (num as u128 / vec_pow[i]) as u32;
         num -= fit as usize * vec_pow[i] as usize;
 
-        match std::char::from_u32(fit + 1) {
+        match std::char::from_u32(fit + 2) {
             Some(ch) => string.push(ch),
-            None => string.push(1 as char),
+            None => string.push(2 as char),
         }
     }
 
@@ -84,7 +84,7 @@ pub fn string_to_usize(string: &str) -> usize {
     let mut vec_pow: Vec<u128> = Vec::new();
 
     if string.len() > 0 {
-        let init = 0x110000 - 1;
+        let init = 0x110000 - 2;
         vec_pow.push(1);
 
         for i in 0..(string.chars().count() - 1) {
@@ -93,7 +93,7 @@ pub fn string_to_usize(string: &str) -> usize {
 
         for ch in string.chars() {
             match vec_pow.pop() {
-                Some(p) => num += p * (ch as u128 - 1),
+                Some(p) => num += p * (ch as u128 - 2),
                 None => break,
             }
         }
