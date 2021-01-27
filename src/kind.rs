@@ -113,7 +113,8 @@ pub fn get_kind(chars: &[char]) -> (String, Kind) {
                     n += 1;
                 }
             } else {
-                string.clear();
+                kind = Kind::BigInt;
+                /*string.clear();
 
                 for c in chars.get(0..n).unwrap() {
                     string.push(*c);
@@ -128,7 +129,7 @@ pub fn get_kind(chars: &[char]) -> (String, Kind) {
                         }
                     }
                     Err(_) => kind = Kind::BigInt,
-                }
+                }*/
             }
 
             break;
