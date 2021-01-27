@@ -82,12 +82,11 @@ impl Clone for DefaultFunction {
 
 impl Copy for DefaultFunction {}
 
-const PRINT_TEXT: &str = "text";
-const PRINT_ARGS: [&str; 1] = [PRINT_TEXT];
+const PRINT_ARGS: [&str; 1] = ["text"];
 
 fn print(vec_table: &mut VecTable) -> Tuple {
-    match vec_table.get(PRINT_TEXT) {
-        Some((level, var)) => println!("{}", var.get_string(PRINT_TEXT, level).unwrap()),
+    match vec_table.get(PRINT_ARGS[0]) {
+        Some((level, var)) => println!("{}", var.get_string(PRINT_ARGS[0], level).unwrap()),
         None => println!(""),
     }
 
@@ -107,9 +106,7 @@ fn read() -> Tuple {
         .to_string();
 
     let mut tuple = Tuple::new();
-    tuple
-        .table
-        .set_string(&format!("{}0", CHAR_SEP_NAME), input);
+    tuple.set_string("", input);
 
     return tuple;
 }

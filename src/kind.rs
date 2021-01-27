@@ -1,4 +1,5 @@
 use crate::operation::*;
+use crate::CHAR_SEP_NAME;
 
 #[allow(unused_imports)]
 use crate::{eprint, eprintln};
@@ -61,7 +62,7 @@ impl Clone for Kind {
 
 impl Copy for Kind {}
 
-pub fn get_kind_possibility(chars: &[char]) -> (String, Kind) {
+pub fn get_kind(chars: &[char]) -> (String, Kind) {
     let mut n = 0;
     let mut kind = Kind::Null;
     let mut string = String::new();
@@ -137,10 +138,10 @@ pub fn get_kind_possibility(chars: &[char]) -> (String, Kind) {
             kind = Kind::Bool;
             n += "false".len();
             break;
-        } else if kind == Kind::Null && chars[n].is_alphabetic() {
+        } else if kind == Kind::Null && (chars[n].is_alphabetic() || chars[n] == CHAR_SEP_NAME) {
             n += 1;
 
-            while n < chars.len() && chars[n].is_alphanumeric() {
+            while n < chars.len() && (chars[n].is_alphanumeric() || chars[n] == CHAR_SEP_NAME) {
                 n += 1;
             }
 
@@ -162,7 +163,7 @@ pub fn get_kind_possibility(chars: &[char]) -> (String, Kind) {
             }
 
             n += 1;
-        } else if chars[n].is_whitespace() {
+        } else if chars[n].is_whitespace() || chars[n] == '(' || chars[n] == ')' {
             break;
         } else {
             let mut opt: &str = "";

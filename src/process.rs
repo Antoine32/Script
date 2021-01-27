@@ -33,11 +33,100 @@ impl Process {
         self.table.merge(other.table);
     }
 
-    pub fn from(mut line: String, line_num: usize) -> (Self, String) {
+    pub fn from(mut line: String, mut line_num: usize, vec_table: &mut VecTable) -> (Self, String) {
         line = line.trim().to_string();
+        let mut this = Self::new();
 
         #[cfg(feature = "print")]
         let mut to_print_vec: Vec<String> = Vec::new();
+
+        let mut at = 0;
+
+        while at < line.len() {
+            let mut pos_inc = 0;
+            let mut pos_dec = 0;
+
+            let mut count_inc = 0;
+            let mut count_dec = 0;
+
+            for (i, ch) in line
+                .get(at..)
+                .unwrap()
+                .match_indices(|ch| ch == '(' || ch == ')')
+            {
+                match ch {
+                    "(" => {
+                        count_inc += 1;
+                        if count_inc == 1 {
+                            pos_inc = i;
+                        }
+                    }
+                    ")" => {
+                        count_dec += 1;
+
+                        if count_dec == count_inc {
+                            pos_dec = i;
+                            break;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            if count_dec == count_inc && count_inc > 0 {
+                let (other, _string) = Self::from(
+                    line.get((pos_inc + 1)..pos_dec).unwrap().to_string(),
+                    line_num,
+                    vec_table,
+                );
+
+                let mut name;
+
+                if other.table.variables.len() > 0 {
+                    name = other.table.variables.iter().nth(0).unwrap().0.clone();
+
+                    let mut min = name
+                        .split(CHAR_SEP_NAME)
+                        .nth(1)
+                        .unwrap()
+                        .parse::<usize>()
+                        .unwrap();
+
+                    for (n, _) in other.table.variables.iter() {
+                        let num = n
+                            .split(CHAR_SEP_NAME)
+                            .nth(1)
+                            .unwrap()
+                            .parse::<usize>()
+                            .unwrap();
+
+                        if num < min {
+                            name = n.clone();
+                            min = num;
+                        }
+                    }
+                } else {
+                    name = String::from("");
+                }
+
+                this.merge(other);
+                line_num += 1;
+
+                #[cfg(feature = "print")]
+                to_print_vec.push(_string);
+
+                let mult = (
+                    line.get(0..(pos_inc + 1)).unwrap(),
+                    name,
+                    line.get(pos_dec..).unwrap(),
+                );
+
+                at = mult.0.len() + mult.1.len();
+                line = format!("{}{}{}", mult.0, mult.1, mult.2);
+            } else {
+                break;
+            }
+        }
 
         #[cfg(feature = "print")]
         to_print_vec.push(format!("\n{}: {} \t|{}|\n", line_num, line.len(), line));
@@ -50,55 +139,91 @@ impl Process {
             operator_order: &mut Vec<Vec<usize>>,
             mut raw_value: &str,
             kind: Kind,
-            extra_priority: usize,
             line_num: usize,
         ) -> String {
             *last_kind = kind;
             *last_raw_value = raw_value.to_string();
 
             if raw_value != " " {
-                let i = entry_list.len();
+                if kind == Kind::Function {
+                    add_variable(
+                        table,
+                        last_kind,
+                        last_raw_value,
+                        entry_list,
+                        operator_order,
+                        &format!(
+                            "{}()",
+                            raw_value.get(0..(raw_value.find('(').unwrap())).unwrap()
+                        ),
+                        Kind::Null,
+                        line_num,
+                    );
 
-                let name = format!(
-                    "{}{}{}{}{}",
-                    {
-                        match kind {
-                            Kind::Null => raw_value,
-                            Kind::Function => raw_value
-                                .get(0..(raw_value.find('(').unwrap() + 1))
-                                .unwrap(),
-                            _ => "",
-                        }
-                    },
-                    CHAR_SEP_NAME,
-                    entry_list.len(),
-                    CHAR_SEP_NAME,
-                    line_num
-                );
+                    add_variable(
+                        table,
+                        last_kind,
+                        last_raw_value,
+                        entry_list,
+                        operator_order,
+                        "☺",
+                        Kind::Operator,
+                        line_num,
+                    );
 
-                match kind {
-                    Kind::Function => {
-                        raw_value = raw_value
+                    add_variable(
+                        table,
+                        last_kind,
+                        last_raw_value,
+                        entry_list,
+                        operator_order,
+                        raw_value
                             .get((raw_value.find('(').unwrap() + 1)..(raw_value.find(')').unwrap()))
-                            .unwrap();
+                            .unwrap(),
+                        Kind::Null,
+                        line_num,
+                    );
+                } else {
+                    let i = entry_list.len();
+                    let mut name = format!(
+                        "{}{}{}{}{}",
+                        {
+                            match kind {
+                                Kind::Null => raw_value.to_string(),
+                                _ => "".to_string(),
+                            }
+                        },
+                        CHAR_SEP_NAME,
+                        entry_list.len(),
+                        CHAR_SEP_NAME,
+                        line_num
+                    );
+                    match kind {
+                        Kind::Null => {
+                            if raw_value.contains(CHAR_SEP_NAME) {
+                                name = raw_value.to_string();
+                            }
+
+                            raw_value = "null";
+                        }
+                        _ => {}
                     }
-                    _ => {}
-                }
 
-                table.set_from_file(&name, raw_value, kind);
+                    table.set_from_file(&name, raw_value, kind);
 
-                let var = table.get(&name);
-                if var.kind == Kind::Operator {
-                    let pri = OPERATORS[var.pos].get_priority() + extra_priority;
+                    let var = table.get(&name);
+                    if var.kind == Kind::Operator {
+                        let pri = OPERATORS[var.pos].get_priority();
 
-                    while operator_order.len() <= pri {
-                        operator_order.push(Vec::new());
+                        while operator_order.len() <= pri {
+                            operator_order.push(Vec::new());
+                        }
+
+                        operator_order[pri].push(i);
                     }
 
-                    operator_order[pri].push(i);
+                    entry_list.push(name);
                 }
-
-                entry_list.push(name);
 
                 #[cfg(feature = "print")]
                 return format!("|{}|, {}, {}", raw_value, kind, raw_value.len());
@@ -118,13 +243,11 @@ impl Process {
         let mut last_kind: Kind = Kind::Operator;
         let mut last_raw_value: String = String::new();
 
-        let mut extra_priority: usize = 0;
-
         while n < line_char.len() {
             c = line_char[n];
 
-            if !c.is_whitespace() {
-                let (raw_value, kind) = get_kind_possibility(line_char.get(n..).unwrap());
+            if !(c.is_whitespace() || c == '(' || c == ')') {
+                let (raw_value, kind) = get_kind(line_char.get(n..).unwrap());
 
                 if raw_value == "-" && last_kind == Kind::Operator {
                     if last_raw_value.as_str() == "+" {
@@ -143,7 +266,6 @@ impl Process {
                             &mut operator_order,
                             &raw_value,
                             kind,
-                            extra_priority,
                             line_num,
                         );
 
@@ -159,7 +281,6 @@ impl Process {
                             &mut operator_order,
                             "-1",
                             Kind::Number,
-                            extra_priority,
                             line_num,
                         );
 
@@ -175,17 +296,12 @@ impl Process {
                             &mut operator_order,
                             "*",
                             Kind::Operator,
-                            extra_priority,
                             line_num,
                         );
 
                         #[cfg(feature = "print")]
                         to_print_vec.push(buf);
                     }
-                } else if raw_value == "(" {
-                    extra_priority += LEVELS_OF_PRIORITY;
-                } else if raw_value == ")" {
-                    extra_priority -= LEVELS_OF_PRIORITY;
                 } else {
                     #[allow(unused_variables)]
                     let buf = add_variable(
@@ -196,7 +312,6 @@ impl Process {
                         &mut operator_order,
                         &raw_value,
                         kind,
-                        extra_priority,
                         line_num,
                     );
 
@@ -232,10 +347,18 @@ impl Process {
             }
         }
 
-        let operations = convert(table.clone(), &mut entry_list, &mut operator_order);
+        let operations = convert(
+            table.clone(),
+            &mut entry_list,
+            &mut operator_order,
+            vec_table,
+            this.operations.len(),
+        );
 
-        table.clear_null();
         table.clear_operator();
+        if vec_table.len() == 1 {
+            table.clear_null();
+        }
 
         #[allow(unused_mut)]
         let mut to_print = String::new();
@@ -246,37 +369,34 @@ impl Process {
             to_print.push('\n');
         }
 
-        (
-            Process {
-                table: table,
-                operations: operations,
-            },
-            to_print,
-        )
+        this.merge(Process {
+            table: table,
+            operations: operations,
+        });
+
+        return (this, to_print);
     }
 
     #[cfg(feature = "print")]
-    fn print_var(&self, name: &str) {
+    fn print_var(name: &str, table: &Table) {
         if name != format!("{}", CHAR_SEP_NAME).as_str() {
-            let var = self.table.get(name);
+            let var = table.get(name);
 
             eprint!(
                 "|{}: {}: |{}||\t",
                 name,
                 var.kind,
-                var.get_string(name, &self.table).unwrap()
+                var.get_string(name, table).unwrap()
             );
         }
     }
 
     #[cfg(feature = "print")]
-    pub fn print_line(&self, n: usize) {
-        let (instuction, names) = &self.operations[n];
-
+    pub fn print_line(instuction: &Intruction, names: &Vec<String>, table: &Table) {
         eprint!("{}\t", instuction);
 
         for name in names.iter() {
-            self.print_var(name);
+            Self::print_var(name, table);
         }
 
         eprintln!("");
@@ -289,11 +409,6 @@ impl Process {
         eprintln!("\n{}\t: {}\t: {}\n", "name", "kind", "value");
 
         for j in pos..(this.operations.len()) {
-            #[cfg(feature = "print")]
-            {
-                this.print_line(j);
-            }
-
             let (instruction, names) = &mut this.operations[j];
             let mut vars: Vec<Variable> = Vec::with_capacity(names.len());
 
@@ -318,7 +433,7 @@ impl Process {
                             Kind::Tuple => this
                                 .table
                                 .set_tuple(name, var.get_tuple(real_name, level).unwrap()),
-                            Kind::Null => this.table.set_null(name),
+                            Kind::Null => this.table.set_null(name, true),
                             Kind::Operator => {}
                             Kind::Function => {}
                         },
@@ -328,6 +443,9 @@ impl Process {
 
                 vars.push(this.table.get(name).clone());
             }
+
+            #[cfg(feature = "print")]
+            Self::print_line(&instruction, &names, &this.table);
 
             match *instruction {
                 Intruction::ASG => {
@@ -382,6 +500,7 @@ impl Process {
                 }
                 Intruction::GOTO => {
                     let name = names.remove(0);
+                    let real_name = get_real_name(&name);
 
                     let tuple = {
                         if names.len() > 0 {
@@ -391,11 +510,41 @@ impl Process {
                         }
                     };
 
-                    match vec_table.get(&name) {
+                    match vec_table.get(real_name) {
                         Some((level, var)) => {
-                            var.get_function(&name, level)
+                            let tuple_b = var
+                                .get_function(real_name, level)
                                 .unwrap()
                                 .run(&tuple, self, vec_table);
+
+                            match tuple_b.len() {
+                                0 => this.table.set_null(&name, false),
+                                1 => {
+                                    let var = tuple_b.get(0);
+
+                                    match var.kind {
+                                        Kind::String => this
+                                            .table
+                                            .set_string(&name, tuple_b.table.get_string(var.pos)),
+                                        Kind::Number => this
+                                            .table
+                                            .set_number(&name, tuple_b.table.get_number(var.pos)),
+                                        Kind::BigInt => this
+                                            .table
+                                            .set_bigint(&name, tuple_b.table.get_bigint(var.pos)),
+                                        Kind::Bool => this
+                                            .table
+                                            .set_bool(&name, tuple_b.table.get_bool(var.pos)),
+                                        Kind::Tuple => this
+                                            .table
+                                            .set_tuple(&name, tuple_b.table.get_tuple(var.pos)),
+                                        Kind::Function => {}
+                                        Kind::Operator => {}
+                                        Kind::Null => this.table.set_null(&name, false),
+                                    };
+                                }
+                                _ => this.table.set_tuple(&name, tuple_b),
+                            }
                         }
                         None => {}
                     }
@@ -458,6 +607,8 @@ fn convert(
     mut table: Table,
     entry_list: &mut Vec<String>,
     operator_order: &mut Vec<Vec<usize>>,
+    vec_table: &mut VecTable,
+    at: usize,
 ) -> Vec<(Intruction, Vec<String>)> {
     let mut operations: Vec<(Intruction, Vec<String>)> = Vec::new();
 
@@ -562,8 +713,22 @@ fn convert(
                         Operator::And => operations.push((Intruction::AND, vec![name_a, name_b])),
                         Operator::Or => operations.push((Intruction::OR, vec![name_a, name_b])),
                         Operator::Return => operations.push((Intruction::END, vec![name_b])),
+                        Operator::End => operations.push((Intruction::END, Vec::new())),
                         Operator::Separator => {
                             operations.push((Intruction::TUP, vec![name_a, name_b]))
+                        }
+                        Operator::SetFunction => {
+                            vec_table.set_function(
+                                &name_a,
+                                Function::new(
+                                    false,
+                                    at + operations.len(),
+                                    table.get(&name_b).get_tuple(&name_b, &table).unwrap(),
+                                ),
+                            );
+                        }
+                        Operator::UseFunction => {
+                            operations.push((Intruction::GOTO, vec![name_a, name_b]))
                         }
                         _ => break,
                     },

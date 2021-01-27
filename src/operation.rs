@@ -1,7 +1,7 @@
 #[allow(unused_imports)]
 use crate::{eprint, eprintln};
 
-pub const OPERATORS: [Operator; 32] = [
+pub const OPERATORS: [Operator; 33] = [
     Operator::PowAsign,
     Operator::AddAsign,
     Operator::SubAsign,
@@ -30,10 +30,11 @@ pub const OPERATORS: [Operator; 32] = [
     Operator::GreaterEqual,
     Operator::LesserEqual,
     Operator::NotEqual,
-    Operator::PriorityIncrement,
-    Operator::PriorityDecrement,
     Operator::Separator,
     Operator::Return,
+    Operator::End,
+    Operator::SetFunction,
+    Operator::UseFunction,
 ];
 
 pub const OPERATORS_STR: [&str; OPERATORS.len()] = [
@@ -69,6 +70,7 @@ pub const OPERATORS_STR: [&str; OPERATORS.len()] = [
     OPERATORS[29].get_str(),
     OPERATORS[30].get_str(),
     OPERATORS[31].get_str(),
+    OPERATORS[32].get_str(),
 ];
 
 pub enum Operator {
@@ -100,14 +102,15 @@ pub enum Operator {
     GreaterEqual,
     LesserEqual,
     NotEqual,
-    PriorityIncrement,
-    PriorityDecrement,
     Separator,
     Return,
+    End,
     SetFunction,
+    UseFunction,
 }
 
 // Priority
+pub const P_USE_FUNCTION: usize = 13;
 pub const P_NOT: usize = 12; // !
 pub const P_POW: usize = 11; // **
 pub const P_MUL_DIV_MOD: usize = 10; // * / %
@@ -122,7 +125,7 @@ pub const P_SEPARATOR: usize = 2;
 pub const P_ASSIGNEMENT: usize = 1; // = += -= *= /= %= &= |= ^= **=
 pub const P_RETURN_FUNCTION: usize = 0; // return
 
-pub const LEVELS_OF_PRIORITY: usize = 13;
+pub const LEVELS_OF_PRIORITY: usize = 14;
 
 impl Operator {
     pub fn from_string(string: &str) -> Option<Self> {
@@ -165,11 +168,11 @@ impl Operator {
             Self::GreaterEqual => P_COMPARAISON,
             Self::LesserEqual => P_COMPARAISON,
             Self::NotEqual => P_COMPARAISON,
-            Self::PriorityIncrement => 0,
-            Self::PriorityDecrement => 0,
             Self::Separator => P_SEPARATOR,
             Self::Return => P_RETURN_FUNCTION,
+            Self::End => P_RETURN_FUNCTION,
             Self::SetFunction => P_RETURN_FUNCTION,
+            Self::UseFunction => P_USE_FUNCTION,
         }
     }
 
@@ -203,11 +206,11 @@ impl Operator {
             Self::GreaterEqual => ">=",
             Self::LesserEqual => "<=",
             Self::NotEqual => "!=",
-            Self::PriorityIncrement => "(",
-            Self::PriorityDecrement => ")",
             Self::Separator => ",",
             Self::Return => "return",
+            Self::End => "end",
             Self::SetFunction => "fn",
+            Self::UseFunction => "☺",
         }
     }
 
@@ -259,11 +262,11 @@ impl std::cmp::PartialEq for Operator {
             Self::GreaterEqual => matches!(other, Self::GreaterEqual),
             Self::LesserEqual => matches!(other, Self::LesserEqual),
             Self::NotEqual => matches!(other, Self::NotEqual),
-            Self::PriorityIncrement => matches!(other, Self::PriorityIncrement),
-            Self::PriorityDecrement => matches!(other, Self::PriorityDecrement),
             Self::Separator => matches!(other, Self::Separator),
             Self::Return => matches!(other, Self::Return),
+            Self::End => matches!(other, Self::End),
             Self::SetFunction => matches!(other, Self::SetFunction),
+            Self::UseFunction => matches!(other, Self::UseFunction),
         }
     }
 }
@@ -299,11 +302,11 @@ impl Clone for Operator {
             Self::GreaterEqual => Self::GreaterEqual,
             Self::LesserEqual => Self::LesserEqual,
             Self::NotEqual => Self::NotEqual,
-            Self::PriorityIncrement => Self::PriorityIncrement,
-            Self::PriorityDecrement => Self::PriorityDecrement,
             Self::Separator => Self::Separator,
             Self::Return => Self::Return,
+            Self::End => Self::End,
             Self::SetFunction => Self::SetFunction,
+            Self::UseFunction => Self::UseFunction,
         }
     }
 }

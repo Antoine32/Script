@@ -14,11 +14,11 @@ pub struct Function {
 }
 
 impl Function {
-    pub fn new(default_fn: bool, pos: usize, arguments: &Vec<&str>) -> Self {
+    pub fn new(default_fn: bool, pos: usize, arguments: Tuple) -> Self {
         Self {
             default_fn: default_fn,
             pos: pos,
-            arguments: Tuple::init(arguments),
+            arguments: arguments,
         }
     }
 
@@ -57,7 +57,7 @@ impl Function {
                 }
                 Kind::Operator => {}
                 Kind::Null => {
-                    table.set_null(name);
+                    table.set_null(name, true);
                 }
                 Kind::Function => {}
             }

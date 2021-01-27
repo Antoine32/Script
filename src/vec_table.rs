@@ -83,7 +83,7 @@ impl VecTable {
     }
 
     pub fn set_null_specified(&mut self, level: usize, entry: &str) {
-        self.tables[level].set_null(entry);
+        self.tables[level].set_null(entry, true);
     }
 
     pub fn set_function_specified(&mut self, level: usize, entry: &str, value: Function) {
@@ -157,14 +157,7 @@ impl VecTable {
     }
 
     pub fn set_function(&mut self, entry: &str, value: Function) {
-        for i in (0..(self.tables.len())).rev() {
-            if self.tables[i].contains(entry) {
-                self.set_function_specified(i, entry, value);
-                return;
-            }
-        }
-
-        self.set_function_specified(self.tables.len() - 1, entry, value);
+        self.set_function_specified(0, entry, value);
     }
 
     pub fn get(&mut self, entry: &str) -> Option<(&mut Table, Variable)> {

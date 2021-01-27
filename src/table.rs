@@ -94,14 +94,14 @@ impl Table {
             Kind::Operator => {
                 self.set_operator(entry, Operator::from_string(raw_value).unwrap().get_pos())
             }
-            Kind::Null => self.set_null(entry),
+            Kind::Null => self.set_null(entry, raw_value != "null"),
             Kind::Function => {
-                let (pos, arguments) = raw_value.split_at(raw_value.find(CHAR_SEP_NAME).unwrap());
+                /*let (pos, arguments) = raw_value.split_at(raw_value.find(CHAR_SEP_NAME).unwrap());
 
                 let pos = string_to_usize(pos);
                 let arguments: Vec<&str> = arguments.split_terminator(CHAR_SEP_NAME).collect();
 
-                self.set_function(entry, Function::new(false, pos, &arguments))
+                self.set_function(entry, Function::new(false, pos, Tuple::init(&arguments)))*/
             }
             Kind::Tuple => self.set_tuple(
                 entry,
@@ -195,8 +195,12 @@ impl Table {
         }
     }
 
-    pub fn set_null(&mut self, entry: &str) {
-        self.remove_entry(entry);
+    pub fn set_null(&mut self, entry: &str, delete: bool) {
+        if delete {
+            self.remove_entry(entry);
+        } else {
+            self.set(entry, 0, Kind::Null);
+        }
     }
 
     pub fn set_function(&mut self, entry: &str, value: Function) {
