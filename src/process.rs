@@ -711,7 +711,10 @@ fn convert(
                         Operator::And => operations.push((Intruction::AND, vec![name_a, name_b])),
                         Operator::Or => operations.push((Intruction::OR, vec![name_a, name_b])),
                         Operator::Return => operations.push((Intruction::END, vec![name_b])),
-                        Operator::End => operations.push((Intruction::END, Vec::new())),
+                        Operator::End => {
+                            operations.push((Intruction::END, Vec::new()));
+                            delete = (false, false);
+                        }
                         Operator::Separator => {
                             operations.push((Intruction::TUP, vec![name_a, name_b]))
                         }
