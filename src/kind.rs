@@ -138,10 +138,10 @@ pub fn get_kind(chars: &[char]) -> (String, Kind) {
             kind = Kind::Bool;
             n += "false".len();
             break;
-        } else if kind == Kind::Null && chars[n].is_alphabetic() || chars[n] == CHAR_SEP_NAME {
+        } else if kind == Kind::Null && (chars[n].is_alphabetic() || chars[n] == CHAR_SEP_NAME) {
             n += 1;
 
-            while n < chars.len() && chars[n].is_alphanumeric() || chars[n] == CHAR_SEP_NAME {
+            while n < chars.len() && (chars[n].is_alphanumeric() || chars[n] == CHAR_SEP_NAME) {
                 n += 1;
             }
 
@@ -163,7 +163,7 @@ pub fn get_kind(chars: &[char]) -> (String, Kind) {
             }
 
             n += 1;
-        } else if chars[n].is_whitespace() {
+        } else if chars[n].is_whitespace() || chars[n] == '(' || chars[n] == ')' {
             break;
         } else {
             let mut opt: &str = "";

@@ -165,7 +165,7 @@ impl Variable {
 
     pub fn get_function(&self, entry: &str, table: &Table) -> Result<Function, String> {
         match self.kind {
-            Kind::Operator => Ok(table.get_function(self.pos)),
+            Kind::Function => Ok(table.get_function(self.pos)),
             _ => Err(self.get_err(entry, Kind::Function)),
         }
     }

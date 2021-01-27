@@ -42,7 +42,7 @@ impl Tuple {
 
     pub fn push_null(&mut self, name: &str) {
         let name = format!("{}{}{}", get_real_name(name), CHAR_SEP_NAME, self.len());
-        self.table.set_null(&name);
+        self.table.set_null(&name, true);
         self.order.push(name);
     }
 
@@ -71,7 +71,7 @@ impl Tuple {
             }
             Kind::Operator => {}
             Kind::Null => {
-                self.table.set_null(&name);
+                self.table.set_null(&name, true);
             }
             Kind::Function => {}
         }
@@ -79,8 +79,14 @@ impl Tuple {
         self.order.push(name);
     }
 
+    pub fn set_string(&mut self, entry: &str, value: String) {
+        let name = format!("{}{}{}", get_real_name(entry), CHAR_SEP_NAME, self.len());
+        self.table.set_string(&name, value);
+        self.order.push(name);
+    }
+
     pub fn get_name(&self, pos: usize) -> &str {
-        if pos > self.len() {
+        if pos >= self.len() {
             ""
         } else {
             &self.order[pos]

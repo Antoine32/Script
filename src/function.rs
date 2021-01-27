@@ -57,7 +57,7 @@ impl Function {
                 }
                 Kind::Operator => {}
                 Kind::Null => {
-                    table.set_null(name);
+                    table.set_null(name, true);
                 }
                 Kind::Function => {}
             }

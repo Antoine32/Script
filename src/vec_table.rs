@@ -83,7 +83,7 @@ impl VecTable {
     }
 
     pub fn set_null_specified(&mut self, level: usize, entry: &str) {
-        self.tables[level].set_null(entry);
+        self.tables[level].set_null(entry, true);
     }
 
     pub fn set_function_specified(&mut self, level: usize, entry: &str, value: Function) {

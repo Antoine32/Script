@@ -210,7 +210,7 @@ impl Operator {
             Self::Return => "return",
             Self::End => "end",
             Self::SetFunction => "fn",
-            Self::UseFunction => "(",
+            Self::UseFunction => "☺",
         }
     }
 

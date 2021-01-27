@@ -27,6 +27,7 @@ use tuple::*;
 use vec_table::*;
 
 pub const CHAR_SEP_NAME: char = 0 as char;
+pub const CHAR_FUNC: char = 1 as char;
 // format!("{}", CHAR_SEP_NAME).as_str()
 
 /*
