@@ -1,6 +1,7 @@
 use crate::get_real_name;
 use crate::kind::*;
 use crate::table::*;
+use crate::usize_to_string;
 use crate::variable::*;
 use crate::CHAR_SEP_NAME;
 use num::BigInt;
@@ -42,13 +43,23 @@ impl Tuple {
     }
 
     pub fn push_null(&mut self, name: &str) {
-        let name = format!("{}{}{}", get_real_name(name), CHAR_SEP_NAME, self.len());
+        let name = format!(
+            "{}{}{}",
+            get_real_name(name),
+            CHAR_SEP_NAME,
+            usize_to_string(self.len())
+        );
         self.table.set_null(&name, true);
         self.order.push(name);
     }
 
     pub fn push(&mut self, var: &Variable, name: &str, table: &Table) {
-        let name = format!("{}{}{}", get_real_name(name), CHAR_SEP_NAME, self.len());
+        let name = format!(
+            "{}{}{}",
+            get_real_name(name),
+            CHAR_SEP_NAME,
+            usize_to_string(self.len())
+        );
 
         match var.kind {
             Kind::String => {
@@ -81,37 +92,67 @@ impl Tuple {
     }
 
     pub fn set_string(&mut self, entry: &str, value: String) {
-        let name = format!("{}{}{}", get_real_name(entry), CHAR_SEP_NAME, self.len());
+        let name = format!(
+            "{}{}{}",
+            get_real_name(entry),
+            CHAR_SEP_NAME,
+            usize_to_string(self.len())
+        );
         self.table.set_string(&name, value);
         self.order.push(name);
     }
 
     pub fn set_number(&mut self, entry: &str, value: f64) {
-        let name = format!("{}{}{}", get_real_name(entry), CHAR_SEP_NAME, self.len());
+        let name = format!(
+            "{}{}{}",
+            get_real_name(entry),
+            CHAR_SEP_NAME,
+            usize_to_string(self.len())
+        );
         self.table.set_number(&name, value);
         self.order.push(name);
     }
 
     pub fn set_bigint(&mut self, entry: &str, value: BigInt) {
-        let name = format!("{}{}{}", get_real_name(entry), CHAR_SEP_NAME, self.len());
+        let name = format!(
+            "{}{}{}",
+            get_real_name(entry),
+            CHAR_SEP_NAME,
+            usize_to_string(self.len())
+        );
         self.table.set_bigint(&name, value);
         self.order.push(name);
     }
 
     pub fn set_bool(&mut self, entry: &str, value: bool) {
-        let name = format!("{}{}{}", get_real_name(entry), CHAR_SEP_NAME, self.len());
+        let name = format!(
+            "{}{}{}",
+            get_real_name(entry),
+            CHAR_SEP_NAME,
+            usize_to_string(self.len())
+        );
         self.table.set_bool(&name, value);
         self.order.push(name);
     }
 
     pub fn set_tuple(&mut self, entry: &str, value: Self) {
-        let name = format!("{}{}{}", get_real_name(entry), CHAR_SEP_NAME, self.len());
+        let name = format!(
+            "{}{}{}",
+            get_real_name(entry),
+            CHAR_SEP_NAME,
+            usize_to_string(self.len())
+        );
         self.table.set_tuple(&name, value);
         self.order.push(name);
     }
 
     pub fn set_null(&mut self, entry: &str) {
-        let name = format!("{}{}{}", get_real_name(entry), CHAR_SEP_NAME, self.len());
+        let name = format!(
+            "{}{}{}",
+            get_real_name(entry),
+            CHAR_SEP_NAME,
+            usize_to_string(self.len())
+        );
         self.table.set_null(&name, true);
         self.order.push(name);
     }

@@ -49,11 +49,12 @@ macro_rules! eprintln {
     }
 }
 
+// needs to not use CHAR_SEP_NAME
 pub fn usize_to_string(mut num: usize) -> String {
     let mut string = String::new();
     let mut vec_pow: Vec<u128> = Vec::new();
 
-    let init = 0x110000;
+    let init = 0x110000 - 1;
     vec_pow.push(1);
 
     let mut i = 1;
@@ -69,9 +70,9 @@ pub fn usize_to_string(mut num: usize) -> String {
         let fit = (num as u128 / vec_pow[i]) as u32;
         num -= fit as usize * vec_pow[i] as usize;
 
-        match std::char::from_u32(fit) {
+        match std::char::from_u32(fit + 1) {
             Some(ch) => string.push(ch),
-            None => string.push(CHAR_SEP_NAME),
+            None => string.push(1 as char),
         }
     }
 
@@ -79,11 +80,11 @@ pub fn usize_to_string(mut num: usize) -> String {
 }
 
 pub fn string_to_usize(string: &str) -> usize {
-    let mut num: usize = 0;
-    let mut vec_pow: Vec<usize> = Vec::new();
+    let mut num = 0;
+    let mut vec_pow: Vec<u128> = Vec::new();
 
     if string.len() > 0 {
-        let init = 0x110000;
+        let init = 0x110000 - 1;
         vec_pow.push(1);
 
         for i in 0..(string.chars().count() - 1) {
@@ -91,12 +92,14 @@ pub fn string_to_usize(string: &str) -> usize {
         }
 
         for ch in string.chars() {
-            let p = vec_pow.pop().unwrap();
-            num += p * (ch as usize);
+            match vec_pow.pop() {
+                Some(p) => num += p * (ch as u128 - 1),
+                None => break,
+            }
         }
     }
 
-    return num;
+    return num as usize;
 }
 
 pub fn quicksort<E: Ord>(arr: &mut [E]) {
