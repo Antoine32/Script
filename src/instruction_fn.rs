@@ -1,9 +1,10 @@
+use crate::bigint_pow;
 use crate::get_real_name;
 use crate::kind::*;
 use crate::table::*;
 use crate::variable::*;
 use crate::vec_table::*;
-use num::{BigInt, One, Signed, Zero};
+use num::{BigInt, Signed, Zero};
 
 #[allow(unused_imports)]
 use crate::{eprint, eprintln};
@@ -169,33 +170,6 @@ pub fn modulo(var_a: &Variable, var_b: &Variable, name_a: &str, name_b: &str, ta
 
         table.set_number(name_a, num_d)
     }
-}
-
-fn bigint_pow(mut a: BigInt, mut b: BigInt) -> BigInt {
-    let mut c = BigInt::one();
-    let mut factor = BigInt::one();
-    let original = a.clone();
-
-    let mut temp;
-
-    while b > BigInt::zero() {
-        temp = &factor + &factor;
-
-        if temp < b {
-            a *= a.clone();
-            factor = temp;
-        } else {
-            c *= &a;
-            b -= &factor;
-
-            if b < factor {
-                a = original.clone();
-                factor = BigInt::one();
-            }
-        }
-    }
-
-    return c;
 }
 
 pub fn power(var_a: &Variable, var_b: &Variable, name_a: &str, name_b: &str, table: &mut Table) {

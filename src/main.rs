@@ -1,7 +1,28 @@
+use num::{BigInt, One, Zero};
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
+
+#[cfg(feature = "time")]
 use std::time::{Duration, Instant};
+
+#[cfg(feature = "memory")]
+use websocket::sync::Server;
+
+#[cfg(feature = "memory")]
+use websocket::Message;
+
+#[cfg(feature = "memory")]
+use std::{sync::mpsc::sync_channel, thread};
+
+#[cfg(feature = "memory")]
+use sysinfo::{ProcessExt, SystemExt};
+
+#[cfg(target_family = "unix")]
+use termion::input::TermRead;
+
+#[cfg(target_family = "unix")]
+use termion::raw::IntoRawMode;
 
 mod default_fn;
 mod function;
@@ -49,18 +70,37 @@ macro_rules! eprintln {
     }
 }
 
-const MINUS: u128 = 33;
+#[cfg(target_family = "windows")]
+fn pause() {
+    let _ = std::process::Command::new("cmd.exe")
+        .arg("/c")
+        .arg("pause")
+        .status();
+}
 
-// needs to not use CHAR_SEP_NAME or CHAR_FUNC
+#[cfg(target_family = "unix")]
+fn pause() {
+    print!("Press any key to continue . . . ");
+
+    let mut stdout = std::io::stdout().into_raw_mode().unwrap();
+    stdout.flush().unwrap();
+    std::io::stdin().events().next();
+
+    println!("{}\n", 13 as char);
+}
+
+const MINUS: u8 = 32; // meant to skip the usage of control character
+
 pub fn usize_to_string(mut num: usize) -> String {
-    /*
     let mut string = String::new();
     let mut vec_pow: Vec<u128> = Vec::new();
 
-    let init = 0x110000 - MINUS;
+    let init = 55296 - MINUS as u128;
     vec_pow.push(1);
 
     let mut i = 1;
+
+    let mut first = true;
 
     while num as u128 >= vec_pow[i - 1] {
         vec_pow.push(vec_pow[i - 1] * init);
@@ -73,13 +113,21 @@ pub fn usize_to_string(mut num: usize) -> String {
         let fit = (num as u128 / vec_pow[i]) as u32;
         num -= fit as usize * vec_pow[i] as usize;
 
-        match std::char::from_u32(fit + MINUS as u32) {
-            Some(ch) => string.push(ch),
-            None => string.push(0 as char),
-        }
-    }*/
+        if fit != 0 || !first {
+            first = false;
 
-    return format!("{}", num);
+            match std::char::from_u32(fit + MINUS as u32) {
+                Some(ch) => string.push(ch),
+                None => string.push(MINUS as char),
+            }
+        }
+    }
+
+    if string.len() == 0 {
+        string.push(MINUS as char);
+    }
+
+    return string;
 }
 
 pub fn string_to_usize(string: &str) -> usize {
@@ -87,7 +135,7 @@ pub fn string_to_usize(string: &str) -> usize {
     let mut vec_pow: Vec<u128> = Vec::new();
 
     if string.len() > 0 {
-        let init = 0x110000 - MINUS;
+        let init = 55296 - MINUS as u128;
         vec_pow.push(1);
 
         for i in 0..(string.chars().count() - 1) {
@@ -96,7 +144,7 @@ pub fn string_to_usize(string: &str) -> usize {
 
         for ch in string.chars() {
             match vec_pow.pop() {
-                Some(p) => num += p * (ch as u128 - MINUS),
+                Some(p) => num += p * (ch as u128 - MINUS as u128),
                 None => break,
             }
         }
@@ -120,6 +168,33 @@ pub fn quicksort<E: Ord>(arr: &mut [E]) {
         quicksort(&mut arr[..pivot]);
         quicksort(&mut arr[pivot + 1..]);
     }
+}
+
+pub fn bigint_pow(mut a: BigInt, mut b: BigInt) -> BigInt {
+    let mut c = BigInt::one();
+    let mut factor = BigInt::one();
+    let original = a.clone();
+
+    let mut temp;
+
+    while b > BigInt::zero() {
+        temp = &factor + &factor;
+
+        if temp < b {
+            a *= a.clone();
+            factor = temp;
+        } else {
+            c *= &a;
+            b -= &factor;
+
+            if b < factor {
+                a = original.clone();
+                factor = BigInt::one();
+            }
+        }
+    }
+
+    return c;
 }
 
 pub fn readfile(filename: &str) -> std::io::Result<String> {
@@ -159,7 +234,11 @@ pub fn decode_string(string: &str) -> String {
                 '\\' => {
                     bypass = true;
                 }
-                '\"' => {}
+                '\"' => {
+                    if !perm {
+                        val.push(c);
+                    }
+                }
                 '\'' => {
                     if perm {
                         val.push(c);
@@ -189,7 +268,6 @@ pub fn process_text(content: String, vec_table: &mut VecTable) -> Process {
     let mut n: usize = 0;
 
     while lines.len() > 0 {
-        #[allow(unused_variables)]
         let (processed_line, _) = Process::from(lines.pop().unwrap(), &mut n, vec_table);
         process_lines.merge(processed_line);
 
@@ -199,6 +277,7 @@ pub fn process_text(content: String, vec_table: &mut VecTable) -> Process {
     return process_lines;
 }
 
+#[cfg(feature = "time")]
 fn time_taken(elapsed: Duration) -> String {
     let nano = elapsed.as_nanos() % 1000;
     let micros = elapsed.as_micros() % 1000;
@@ -220,7 +299,94 @@ fn time_taken(elapsed: Duration) -> String {
     return string;
 }
 
+#[cfg(feature = "memory")]
+fn thread_memory() -> (
+    std::sync::mpsc::Receiver<String>,
+    std::sync::mpsc::SyncSender<bool>,
+) {
+    let pid = std::process::id() as usize;
+
+    let (sender_thread, receiver_ext) = sync_channel(2);
+    let (sender_ext, receiver_thread) = sync_channel(2);
+
+    let mut senders: Vec<std::sync::mpsc::SyncSender<u64>> = Vec::new();
+
+    let server = Server::bind("127.0.0.1:8889").unwrap();
+
+    println!("connect debuger");
+
+    for connection in server.filter_map(Result::ok) {
+        let (sender_thread_net, receiver_net): (
+            std::sync::mpsc::SyncSender<u64>,
+            std::sync::mpsc::Receiver<u64>,
+        ) = sync_channel(2);
+
+        senders.push(sender_thread_net);
+
+        thread::spawn(move || {
+            let mut client = connection.accept().unwrap();
+
+            loop {
+                let content = receiver_net.recv().unwrap();
+
+                if content != 0 {
+                    let message = Message::text(content.to_string());
+                    client.send_message(&message).unwrap();
+                } else {
+                    break;
+                }
+            }
+        });
+
+        break;
+    }
+
+    thread::spawn(move || {
+        let mut system = sysinfo::System::new_all();
+        system.refresh_all();
+
+        sender_thread.send(String::new()).unwrap(); // doesn't run the thread and the program at the same time without it, idk why...
+
+        let mut max_use = 0;
+
+        let mut last = Instant::now();
+
+        while receiver_thread.try_recv().is_err() {
+            system.refresh_process(pid);
+            let process = system.get_process(pid).unwrap();
+            let memory = process.memory();
+
+            if last.elapsed().as_millis() >= 33 || max_use == 0 {
+                if memory > 0 {
+                    for sender in senders.iter() {
+                        sender.send(memory).unwrap();
+                    }
+                }
+
+                last = Instant::now()
+            }
+
+            if memory > max_use {
+                max_use = memory;
+            }
+        }
+
+        for sender in senders.iter() {
+            sender.send(0).unwrap();
+        }
+
+        sender_thread.send(format!("Max: {} KB", max_use)).unwrap();
+    });
+
+    receiver_ext.recv().unwrap(); // doesn't run the thread and the program at the same time without it, idk why...
+
+    return (receiver_ext, sender_ext);
+}
+
 fn main() {
+    #[cfg(feature = "memory")]
+    let (receiver, sender) = thread_memory();
+
     let mut vec_table = VecTable::new();
 
     for i in 0..(DEFAULTS_FUNCTIONS.len()) {
@@ -230,25 +396,51 @@ fn main() {
         );
     }
 
+    #[cfg(feature = "time")]
     let timer_a = Instant::now();
 
-    let process_lines = process_text(readfile("test.te").unwrap(), &mut vec_table);
+    let content = readfile("test.te").unwrap();
 
+    let process_lines = process_text(content, &mut vec_table);
+    #[cfg(feature = "time")]
     let time_a = timer_a.elapsed();
 
     eprintln!("\n---------------------------------------------------------------------\n");
-
+    #[cfg(feature = "time")]
     let timer_b = Instant::now();
 
     process_lines.run(&mut vec_table, 0);
 
+    #[cfg(feature = "time")]
     let time_b = timer_b.elapsed();
 
+    #[cfg(feature = "time")]
     let time_c = timer_a.elapsed();
 
-    println!("\n----------------- Time taken -----------------");
+    #[cfg(feature = "time")]
+    {
+        println!("\n----------------- Time taken -----------------\n");
 
-    println!("\nInterpretation Time :\n{}", time_taken(time_a));
-    println!("\nExecution Time :\n{}", time_taken(time_b));
-    println!("\nTotal Time :\n{}", time_taken(time_c));
+        println!("Interpretation Time :\n{}", time_taken(time_a));
+        println!("Execution Time :\n{}", time_taken(time_b));
+        println!("Total Time :\n{}", time_taken(time_c));
+    }
+
+    #[cfg(feature = "memory")]
+    {
+        println!("\n---------------- Memory usage ----------------\n");
+
+        sender.send(false).unwrap();
+
+        println!("{}", receiver.recv().unwrap());
+
+        //println!("memory usage A: {} KB", mem_a);
+        //println!("memory usage B: {} KB", mem_b);
+    }
+
+    #[cfg(feature = "pause")]
+    {
+        println!("");
+        pause();
+    }
 }

@@ -10,6 +10,9 @@ use crate::variable::*;
 use crate::vec_table::*;
 use crate::CHAR_SEP_NAME;
 
+#[cfg(feature = "print")]
+use crate::string_to_usize;
+
 #[allow(unused_imports)]
 use crate::{eprint, eprintln};
 
@@ -50,25 +53,55 @@ impl Process {
             let mut count_inc = 0;
             let mut count_dec = 0;
 
+            let mut do_a = true;
+            let mut do_b = true;
+
+            let mut can_a = true;
+
+            let mut do_b_pos = 0;
+
             for (i, ch) in line
                 .get(at..)
                 .unwrap()
-                .match_indices(|ch| ch == '(' || ch == ')')
+                .match_indices(|ch| ch == '(' || ch == ')' || ch == '"' || ch == '\'' || ch == '\\')
             {
                 match ch {
                     "(" => {
-                        count_inc += 1;
-                        if count_inc == 1 {
-                            pos_inc = i;
+                        if do_a {
+                            count_inc += 1;
+
+                            if count_inc == 1 {
+                                pos_inc = i;
+                            }
                         }
                     }
                     ")" => {
-                        count_dec += 1;
+                        if do_a {
+                            count_dec += 1;
 
-                        if count_dec == count_inc {
-                            pos_dec = i;
-                            break;
+                            if count_dec == count_inc {
+                                pos_dec = i;
+                                break;
+                            }
                         }
+                    }
+                    "\"" | "\'" => {
+                        if (do_b || (i - do_b_pos > 1))
+                            && (ch == "\"" || can_a)
+                            && (ch == "\'" || !can_a)
+                        {
+                            do_a = !do_a;
+
+                            if do_a {
+                                do_b = true;
+                            } else {
+                                can_a = ch == "\'";
+                            }
+                        }
+                    }
+                    "\\" => {
+                        do_b = false;
+                        do_b_pos = i;
                     }
                     _ => {}
                 }
@@ -81,8 +114,10 @@ impl Process {
                     vec_table,
                 );
 
-                if name.contains("(") {
-                    name = name.trim_start_matches(get_real_name(&name)).to_string();
+                let real_name = get_real_name(&name);
+
+                if real_name.contains("(") {
+                    name = name.trim_start_matches(real_name).to_string();
                 }
 
                 this.merge(other);
@@ -158,7 +193,7 @@ impl Process {
                 } else {
                     let i = entry_list.len();
                     let mut name = format!(
-                        "{}{}{}{}{}",
+                        "{}{}{}{}{}{}",
                         {
                             match kind {
                                 Kind::Null => raw_value.to_string(),
@@ -168,7 +203,8 @@ impl Process {
                         CHAR_SEP_NAME,
                         usize_to_string(entry_list.len()),
                         CHAR_SEP_NAME,
-                        usize_to_string(*line_num)
+                        usize_to_string(*line_num),
+                        CHAR_SEP_NAME,
                     );
                     match kind {
                         Kind::Null => {
@@ -303,7 +339,17 @@ impl Process {
         for p in entry_list.iter() {
             let var = table.get(p);
             let real_name = get_real_name(p);
-            let name = p.trim_start_matches(real_name);
+            let name = p.trim_start_matches(real_name).trim_matches(CHAR_SEP_NAME);
+            let name: Vec<&str> = name.split_terminator(CHAR_SEP_NAME).collect();
+            let name = format!(
+                "{}{}",
+                string_to_usize(name[0]),
+                if name.len() > 1 {
+                    string_to_usize(name[1]).to_string()
+                } else {
+                    "".to_string()
+                }
+            );
 
             eprintln!(
                 "{} \t| {} \t{}: {}{}{}",
@@ -363,9 +409,22 @@ impl Process {
         if name != format!("{}", CHAR_SEP_NAME).as_str() {
             let var = table.get(name);
 
+            let real_name = get_real_name(name);
+            let simplified_name = name
+                .trim_start_matches(real_name)
+                .trim_matches(CHAR_SEP_NAME);
+            let simplified_name: Vec<&str> =
+                simplified_name.split_terminator(CHAR_SEP_NAME).collect();
+            let simplified_name = format!(
+                "{}{}{}",
+                real_name,
+                string_to_usize(simplified_name[0]),
+                string_to_usize(simplified_name[1]),
+            );
+
             eprint!(
                 "|{}: {}: |{}||\t",
-                name,
+                simplified_name,
                 var.kind,
                 var.get_string(name, table).unwrap()
             );
@@ -631,10 +690,25 @@ fn convert(
 
                 if operator_position < entry_list.len() - 1 {
                     name_b = entry_list[operator_position + 1].to_string();
+                    let real_name = get_real_name(&name_b);
+
+                    if real_name.contains("(") {
+                        name_b = name_b.trim_start_matches(real_name).to_string();
+                    }
                 }
 
                 if operator_position > 0 {
                     name_a = entry_list[operator_position - 1].to_string();
+                    let real_name = get_real_name(&name_b);
+
+                    match operator {
+                        Operator::SetFunction | Operator::UseFunction => {}
+                        _ => {
+                            if real_name.contains("(") {
+                                name_a = name_a.trim_start_matches(real_name).to_string();
+                            }
+                        }
+                    };
                 }
 
                 delete = (false, true);
