@@ -42,9 +42,53 @@ impl Process {
         line_num: &mut usize,
         vec_table: &mut VecTable,
     ) -> (Self, String) {
-        line = line.trim().to_string();
         let mut this = Self::new();
         let mut at = 0;
+
+        {
+            let mut do_a = true;
+            let mut do_b = true;
+
+            let mut can_a = true;
+
+            let mut do_b_pos = 0;
+
+            for (i, ch) in line
+                .get(at..)
+                .unwrap()
+                .match_indices(|ch| ch == '#' || ch == '\"' || ch == '\'' || ch == '\\')
+            {
+                match ch {
+                    "#" => {
+                        if do_a {
+                            line = line.get(..i).unwrap().to_string();
+                            break;
+                        }
+                    }
+                    "\"" | "\'" => {
+                        if (do_b || (i - do_b_pos > 1))
+                            && (ch == "\"" || can_a)
+                            && (ch == "\'" || !can_a)
+                        {
+                            do_a = !do_a;
+
+                            if do_a {
+                                do_b = true;
+                            } else {
+                                can_a = ch == "\'";
+                            }
+                        }
+                    }
+                    "\\" => {
+                        do_b = false;
+                        do_b_pos = i;
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        line = line.trim().to_string();
 
         while at < line.len() {
             let mut pos_inc = 0;
@@ -60,11 +104,9 @@ impl Process {
 
             let mut do_b_pos = 0;
 
-            for (i, ch) in line
-                .get(at..)
-                .unwrap()
-                .match_indices(|ch| ch == '(' || ch == ')' || ch == '"' || ch == '\'' || ch == '\\')
-            {
+            for (i, ch) in line.get(at..).unwrap().match_indices(|ch| {
+                ch == '(' || ch == ')' || ch == '\"' || ch == '\'' || ch == '\\'
+            }) {
                 match ch {
                     "(" => {
                         if do_a {
@@ -516,6 +558,9 @@ impl Process {
                 Intruction::DIV => {
                     division(&vars[0], &vars[1], &names[0], &names[1], &mut this.table)
                 }
+                Intruction::IDIV => {
+                    integer_division(&vars[0], &vars[1], &names[0], &names[1], &mut this.table)
+                }
                 Intruction::MOD => {
                     modulo(&vars[0], &vars[1], &names[0], &names[1], &mut this.table)
                 }
@@ -716,41 +761,46 @@ fn convert(
                 match operator.get_priority() {
                     P_ASSIGNEMENT => {
                         // let name_a_buf = get_real_name(&name_a).to_string();
-                        let name_a_buf = name_a.to_string();
-                        let name_b_buf = name_b.to_string();
+                        //let name_b_buf = name_b.to_string();
 
-                        match operator {
-                            Operator::AddAsign => {
-                                operations.push((Intruction::ADD, vec![name_a, name_b]))
+                        if operator == Operator::Asign {
+                            operations.push((Intruction::ASG, vec![name_a, name_b]))
+                        } else {
+                            let name_a_buf = name_a.to_string();
+
+                            match operator {
+                                Operator::AddAsign => {
+                                    operations.push((Intruction::ADD, vec![name_a, name_b]))
+                                }
+                                Operator::SubAsign => {
+                                    operations.push((Intruction::SUB, vec![name_a, name_b]))
+                                }
+                                Operator::MulAsign => {
+                                    operations.push((Intruction::MUL, vec![name_a, name_b]))
+                                }
+                                Operator::DivAsign => {
+                                    operations.push((Intruction::DIV, vec![name_a, name_b]))
+                                }
+                                Operator::ModAsign => {
+                                    operations.push((Intruction::MOD, vec![name_a, name_b]))
+                                }
+                                Operator::PowAsign => {
+                                    operations.push((Intruction::POW, vec![name_a, name_b]))
+                                }
+                                Operator::BandAsign => {
+                                    operations.push((Intruction::BAND, vec![name_a, name_b]))
+                                }
+                                Operator::XorAsign => {
+                                    operations.push((Intruction::XOR, vec![name_a, name_b]))
+                                }
+                                Operator::BorAsign => {
+                                    operations.push((Intruction::BOR, vec![name_a, name_b]))
+                                }
+                                _ => {}
                             }
-                            Operator::SubAsign => {
-                                operations.push((Intruction::SUB, vec![name_a, name_b]))
-                            }
-                            Operator::MulAsign => {
-                                operations.push((Intruction::MUL, vec![name_a, name_b]))
-                            }
-                            Operator::DivAsign => {
-                                operations.push((Intruction::DIV, vec![name_a, name_b]))
-                            }
-                            Operator::ModAsign => {
-                                operations.push((Intruction::MOD, vec![name_a, name_b]))
-                            }
-                            Operator::PowAsign => {
-                                operations.push((Intruction::POW, vec![name_a, name_b]))
-                            }
-                            Operator::BandAsign => {
-                                operations.push((Intruction::BAND, vec![name_a, name_b]))
-                            }
-                            Operator::XorAsign => {
-                                operations.push((Intruction::XOR, vec![name_a, name_b]))
-                            }
-                            Operator::BorAsign => {
-                                operations.push((Intruction::BOR, vec![name_a, name_b]))
-                            }
-                            _ => {}
+
+                            operations.push((Intruction::ASG, vec![name_a_buf.clone(), name_a_buf]))
                         }
-
-                        operations.push((Intruction::ASG, vec![name_a_buf, name_b_buf]))
                     }
                     _ => match operator {
                         Operator::Not => {
@@ -760,6 +810,9 @@ fn convert(
                         Operator::Pow => operations.push((Intruction::POW, vec![name_a, name_b])),
                         Operator::Mul => operations.push((Intruction::MUL, vec![name_a, name_b])),
                         Operator::Div => operations.push((Intruction::DIV, vec![name_a, name_b])),
+                        Operator::DivInt => {
+                            operations.push((Intruction::IDIV, vec![name_a, name_b]))
+                        }
                         Operator::Mod => operations.push((Intruction::MOD, vec![name_a, name_b])),
                         Operator::Add => operations.push((Intruction::ADD, vec![name_a, name_b])),
                         Operator::Sub => operations.push((Intruction::SUB, vec![name_a, name_b])),
