@@ -8,6 +8,7 @@ pub enum Intruction {
     SUB,  // substract -
     MUL,  // multiply *
     DIV,  // division /
+    IDIV, // integer division //
     MOD,  // modulo %
     POW,  // power **
     EQU,  // equal ==
@@ -35,22 +36,23 @@ impl Intruction {
             Self::SUB => 3,
             Self::MUL => 4,
             Self::DIV => 5,
-            Self::MOD => 6,
-            Self::POW => 7,
-            Self::EQU => 8,
-            Self::NEQU => 9,
-            Self::XOR => 10,
-            Self::BAND => 11,
-            Self::BOR => 12,
-            Self::AND => 13,
-            Self::OR => 14,
-            Self::GRE => 15,
-            Self::LES => 16,
-            Self::EGRE => 17,
-            Self::ELES => 18,
-            Self::GOTO => 19,
-            Self::END => 20,
-            Self::TUP => 21,
+            Self::IDIV => 6,
+            Self::MOD => 7,
+            Self::POW => 8,
+            Self::EQU => 9,
+            Self::NEQU => 10,
+            Self::XOR => 11,
+            Self::BAND => 12,
+            Self::BOR => 13,
+            Self::AND => 14,
+            Self::OR => 15,
+            Self::GRE => 16,
+            Self::LES => 17,
+            Self::EGRE => 18,
+            Self::ELES => 19,
+            Self::GOTO => 20,
+            Self::END => 21,
+            Self::TUP => 22,
         }
     }
 }
@@ -64,6 +66,7 @@ impl std::fmt::Display for Intruction {
             Self::SUB => write!(f, "SUB"),
             Self::MUL => write!(f, "MUL"),
             Self::DIV => write!(f, "DIV"),
+            Self::IDIV => write!(f, "IDIV"),
             Self::MOD => write!(f, "MOD"),
             Self::POW => write!(f, "POW"),
             Self::EQU => write!(f, "EQU"),
@@ -93,6 +96,7 @@ impl std::cmp::PartialEq for Intruction {
             Self::SUB => matches!(other, Self::SUB),
             Self::MUL => matches!(other, Self::MUL),
             Self::DIV => matches!(other, Self::DIV),
+            Self::IDIV => matches!(other, Self::IDIV),
             Self::MOD => matches!(other, Self::MOD),
             Self::POW => matches!(other, Self::POW),
             Self::EQU => matches!(other, Self::EQU),
@@ -122,6 +126,7 @@ impl Clone for Intruction {
             Self::SUB => Self::SUB,
             Self::MUL => Self::MUL,
             Self::DIV => Self::DIV,
+            Self::IDIV => Self::IDIV,
             Self::MOD => Self::MOD,
             Self::POW => Self::POW,
             Self::EQU => Self::EQU,

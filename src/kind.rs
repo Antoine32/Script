@@ -92,7 +92,8 @@ pub fn get_kind(chars: &[char]) -> (String, Kind) {
             n += 1;
 
             while n < chars.len()
-                && ((chars[n] != '\"' && (perm || chars[n] != '\'')) || chars[n - 1] == '\\')
+                && (((!perm || chars[n] != '\"') && (perm || chars[n] != '\''))
+                    || chars[n - 1] == '\\')
             {
                 n += 1;
             }
@@ -108,7 +109,6 @@ pub fn get_kind(chars: &[char]) -> (String, Kind) {
             if n < chars.len() && chars[n] == '.' {
                 kind = Kind::Number;
                 n += 1;
-
                 while n < chars.len() && chars[n].is_numeric() {
                     n += 1;
                 }
@@ -146,20 +146,35 @@ pub fn get_kind(chars: &[char]) -> (String, Kind) {
             n += "false".len();
             break;
         } else if kind == Kind::Null && (chars[n].is_alphabetic() || chars[n] == CHAR_SEP_NAME) {
+            let mut count_sep = 0;
+            if chars[n] == CHAR_SEP_NAME {
+                count_sep += 1;
+            }
             n += 1;
 
-            while n < chars.len() && (chars[n].is_alphanumeric() || chars[n] == CHAR_SEP_NAME) {
+            while n < chars.len()
+                && (chars[n].is_alphanumeric()
+                    || chars[n] == CHAR_SEP_NAME
+                    || (count_sep > 0 && count_sep < 3))
+            {
                 n += 1;
+
+                if chars[n - 1] == CHAR_SEP_NAME {
+                    count_sep += 1;
+
+                    if count_sep == 3 {
+                        break;
+                    }
+                }
             }
 
-            if n < chars.len() && chars[n] == '(' {
+            if n < chars.len() && chars[n] == '(' && count_sep == 0 {
                 kind = Kind::Function;
                 n += 1;
 
                 while n < chars.len() && chars[n] != ')' {
                     n += 1;
                 }
-
                 n += 1;
             }
 
@@ -168,7 +183,6 @@ pub fn get_kind(chars: &[char]) -> (String, Kind) {
             if !(chars.len() > n + 1 && chars[n + 1].is_numeric()) {
                 kind = Kind::Operator;
             }
-
             n += 1;
         } else if chars[n].is_whitespace() || chars[n] == '(' || chars[n] == ')' {
             break;
@@ -197,6 +211,13 @@ pub fn get_kind(chars: &[char]) -> (String, Kind) {
 
     if n < 1 {
         n = 1;
+    }
+
+    if chars.get(0..n).is_none() {
+        println!("bfnclk: {}", n);
+        for ch in chars.iter() {
+            println!("aklsdj: {} | {}", *ch as usize, ch);
+        }
     }
 
     string.clear();
