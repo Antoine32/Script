@@ -6,16 +6,16 @@ use std::io::BufReader;
 #[cfg(feature = "time")]
 use std::time::{Duration, Instant};
 
-#[cfg(feature = "memory")]
+#[cfg(feature = "monitor")]
 use websocket::sync::Server;
 
-#[cfg(feature = "memory")]
+#[cfg(feature = "monitor")]
 use websocket::Message;
 
-#[cfg(feature = "memory")]
+#[cfg(feature = "monitor")]
 use std::{sync::mpsc::sync_channel, thread};
 
-#[cfg(feature = "memory")]
+#[cfg(feature = "monitor")]
 use sysinfo::{ProcessExt, SystemExt};
 
 #[cfg(target_family = "unix")]
@@ -173,7 +173,8 @@ pub fn quicksort<E: Ord>(arr: &mut [E]) {
 pub fn bigint_pow(mut a: BigInt, mut b: BigInt) -> BigInt {
     let mut c = BigInt::one();
     let mut factor = BigInt::one();
-    let original = a.clone();
+
+    let mut vec_factor: Vec<BigInt> = Vec::new();
 
     let mut temp;
 
@@ -181,15 +182,21 @@ pub fn bigint_pow(mut a: BigInt, mut b: BigInt) -> BigInt {
         temp = &factor + &factor;
 
         if temp < b {
+            vec_factor.push(a.clone());
             a *= a.clone();
             factor = temp;
         } else {
             c *= &a;
             b -= &factor;
 
-            if b < factor {
-                a = original.clone();
-                factor = BigInt::one();
+            while b < factor {
+                match vec_factor.pop() {
+                    Some(e) => {
+                        a = e;
+                        factor -= BigInt::one();
+                    }
+                    None => break,
+                }
             }
         }
     }
@@ -299,7 +306,7 @@ fn time_taken(elapsed: Duration) -> String {
     return string;
 }
 
-#[cfg(feature = "memory")]
+#[cfg(feature = "monitor")]
 fn thread_memory() -> (
     std::sync::mpsc::Receiver<String>,
     std::sync::mpsc::SyncSender<bool>,
@@ -309,16 +316,16 @@ fn thread_memory() -> (
     let (sender_thread, receiver_ext) = sync_channel(2);
     let (sender_ext, receiver_thread) = sync_channel(2);
 
-    let mut senders: Vec<std::sync::mpsc::SyncSender<u64>> = Vec::new();
+    let mut senders: Vec<std::sync::mpsc::SyncSender<json::JsonValue>> = Vec::new();
 
     let server = Server::bind("127.0.0.1:8889").unwrap();
 
-    println!("connect debuger");
+    println!("connect monitor program");
 
     for connection in server.filter_map(Result::ok) {
         let (sender_thread_net, receiver_net): (
-            std::sync::mpsc::SyncSender<u64>,
-            std::sync::mpsc::Receiver<u64>,
+            std::sync::mpsc::SyncSender<json::JsonValue>,
+            std::sync::mpsc::Receiver<json::JsonValue>,
         ) = sync_channel(2);
 
         senders.push(sender_thread_net);
@@ -327,12 +334,11 @@ fn thread_memory() -> (
             let mut client = connection.accept().unwrap();
 
             loop {
-                let content = receiver_net.recv().unwrap();
+                let data = receiver_net.recv().unwrap();
+                let message = Message::text(data.to_string());
+                client.send_message(&message).unwrap();
 
-                if content != 0 {
-                    let message = Message::text(content.to_string());
-                    client.send_message(&message).unwrap();
-                } else {
+                if data["memory"] == 0 {
                     break;
                 }
             }
@@ -351,16 +357,42 @@ fn thread_memory() -> (
 
         let mut last = Instant::now();
 
-        while receiver_thread.try_recv().is_err() {
-            system.refresh_process(pid);
-            let process = system.get_process(pid).unwrap();
-            let memory = process.memory();
+        let mut data = json::JsonValue::new_object();
+        data["memory"] = 1.into();
+        data["cpu"] = 0.into();
+        data["read"] = 0.into();
+        data["write"] = 0.into();
 
-            if last.elapsed().as_millis() >= 33 || max_use == 0 {
-                if memory > 0 {
-                    for sender in senders.iter() {
-                        sender.send(memory).unwrap();
-                    }
+        let mut count = 1.0;
+
+        while receiver_thread.try_recv().is_err() {
+            system.refresh_all();
+            system.refresh_disks();
+            system.refresh_process(pid);
+
+            let process = system.get_process(pid).unwrap();
+
+            let memory = process.memory();
+            let cpu = process.cpu_usage();
+            let disk = process.disk_usage();
+
+            if memory > 0 {
+                data["memory"] = memory.into();
+            }
+
+            if cpu > 0.0 {
+                data["cpu"] = isize::min(((cpu / count) * 1.0) as isize, 100).into();
+                count = 1.0;
+            } else {
+                count += 1.0;
+            }
+
+            data["read"] = disk.read_bytes.into();
+            data["write"] = disk.written_bytes.into();
+
+            if last.elapsed().as_millis() >= 50 || max_use == 0 {
+                for sender in senders.iter() {
+                    sender.send(data.clone()).unwrap();
                 }
 
                 last = Instant::now()
@@ -371,8 +403,13 @@ fn thread_memory() -> (
             }
         }
 
+        data["memory"] = 0.into();
+        data["cpu"] = 0.into();
+        data["read"] = 0.into();
+        data["write"] = 0.into();
+
         for sender in senders.iter() {
-            sender.send(0).unwrap();
+            sender.send(data.clone()).unwrap();
         }
 
         sender_thread.send(format!("Max: {} KB", max_use)).unwrap();
@@ -384,7 +421,7 @@ fn thread_memory() -> (
 }
 
 fn main() {
-    #[cfg(feature = "memory")]
+    #[cfg(feature = "monitor")]
     let (receiver, sender) = thread_memory();
 
     let mut vec_table = VecTable::new();
@@ -426,7 +463,7 @@ fn main() {
         println!("Total Time :\n{}", time_taken(time_c));
     }
 
-    #[cfg(feature = "memory")]
+    #[cfg(feature = "monitor")]
     {
         println!("\n---------------- Memory usage ----------------\n");
 
