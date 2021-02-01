@@ -275,8 +275,8 @@ pub fn process_text(content: String, vec_table: &mut VecTable) -> Process {
     let mut n: usize = 0;
 
     while lines.len() > 0 {
-        let (processed_line, _) = Process::from(lines.pop().unwrap(), &mut n, vec_table);
-        process_lines.merge(processed_line);
+        process_lines.from(lines.pop().unwrap(), &mut n, vec_table);
+        //process_lines.merge(processed_line);
 
         n += 1;
     }
@@ -439,6 +439,7 @@ fn main() {
     let content = readfile("test.te").unwrap();
 
     let process_lines = process_text(content, &mut vec_table);
+
     #[cfg(feature = "time")]
     let time_a = timer_a.elapsed();
 

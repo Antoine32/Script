@@ -2,29 +2,30 @@
 use crate::{eprint, eprintln};
 
 pub enum Intruction {
-    ASG,  // assign =
-    NOT,  // not !
-    ADD,  // add +
-    SUB,  // substract -
-    MUL,  // multiply *
-    DIV,  // division /
-    IDIV, // integer division //
-    MOD,  // modulo %
-    POW,  // power **
-    EQU,  // equal ==
-    NEQU, // not equal !=
-    XOR,  // exlusif or ^
-    BAND, // bit and &
-    BOR,  // bit or |
-    AND,  // and &&
-    OR,   // or ||
-    GRE,  // greater-then >
-    LES,  // lesser-then <
-    EGRE, // greater-then or equal >=
-    ELES, // lesser-then or equal <=
-    GOTO, // classic goto with the name of the function instead of the line
-    END,  // end current process whether it be a function, a thread or the main program
-    TUP,  // , make into a tuple
+    ASG,    // assign =
+    NOT,    // not !
+    ADD,    // add +
+    SUB,    // substract -
+    MUL,    // multiply *
+    DIV,    // division /
+    IDIV,   // integer division //
+    MOD,    // modulo %
+    POW,    // power **
+    EQU,    // equal ==
+    NEQU,   // not equal !=
+    XOR,    // exlusif or ^
+    BAND,   // bit and &
+    BOR,    // bit or |
+    AND,    // and &&
+    OR,     // or ||
+    GRE,    // greater-then >
+    LES,    // lesser-then <
+    EGRE,   // greater-then or equal >=
+    ELES,   // lesser-then or equal <=
+    GOTO,   // classic goto with the positino of the intruction to go to
+    GOTOFN, // classic goto with the name of the function instead of the line
+    END,    // end current process whether it be a function, a thread or the main program
+    TUP,    // , make into a tuple
 }
 
 impl Intruction {
@@ -51,8 +52,9 @@ impl Intruction {
             Self::EGRE => 18,
             Self::ELES => 19,
             Self::GOTO => 20,
-            Self::END => 21,
-            Self::TUP => 22,
+            Self::GOTOFN => 21,
+            Self::END => 22,
+            Self::TUP => 23,
         }
     }
 }
@@ -81,6 +83,7 @@ impl std::fmt::Display for Intruction {
             Self::EGRE => write!(f, "EGRE"),
             Self::ELES => write!(f, "ELES"),
             Self::GOTO => write!(f, "GOTO"),
+            Self::GOTOFN => write!(f, "GOTOFN"),
             Self::END => write!(f, "END"),
             Self::TUP => write!(f, "TUP"),
         }
@@ -111,6 +114,7 @@ impl std::cmp::PartialEq for Intruction {
             Self::EGRE => matches!(other, Self::EGRE),
             Self::ELES => matches!(other, Self::ELES),
             Self::GOTO => matches!(other, Self::GOTO),
+            Self::GOTOFN => matches!(other, Self::GOTOFN),
             Self::END => matches!(other, Self::END),
             Self::TUP => matches!(other, Self::TUP),
         }
@@ -141,6 +145,7 @@ impl Clone for Intruction {
             Self::EGRE => Self::EGRE,
             Self::ELES => Self::ELES,
             Self::GOTO => Self::GOTO,
+            Self::GOTOFN => Self::GOTOFN,
             Self::END => Self::END,
             Self::TUP => Self::TUP,
         }

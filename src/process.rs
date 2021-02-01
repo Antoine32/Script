@@ -5,44 +5,43 @@ use crate::kind::*;
 use crate::operation::*;
 use crate::table::*;
 use crate::tuple::*;
-use crate::usize_to_string;
 use crate::variable::*;
 use crate::vec_table::*;
 use crate::CHAR_SEP_NAME;
-
-#[cfg(feature = "print")]
-use crate::string_to_usize;
+use crate::{string_to_usize, usize_to_string};
 
 #[allow(unused_imports)]
 use crate::{eprint, eprintln};
 
 pub struct Process {
     pub table: Table,
-    pub operations: Vec<(Intruction, Vec<String>)>,
+    pub instructions: Vec<(Intruction, Vec<String>)>,
+    incomplete_function: Vec<usize>,
 }
 
 impl Process {
     pub fn new() -> Self {
         Process {
             table: Table::new(),
-            operations: Vec::new(),
+            instructions: Vec::new(),
+            incomplete_function: Vec::new(),
         }
     }
 
     pub fn merge(&mut self, other: Self) {
-        for element in other.operations.into_iter() {
-            self.operations.push(element);
+        for element in other.instructions.into_iter() {
+            self.instructions.push(element);
         }
 
         self.table.merge(other.table);
     }
 
     pub fn from(
+        &mut self,
         mut line: String,
         line_num: &mut usize,
         vec_table: &mut VecTable,
-    ) -> (Self, String) {
-        let mut this = Self::new();
+    ) -> String {
         let mut at = 0;
 
         {
@@ -150,7 +149,7 @@ impl Process {
             }
 
             if count_dec == count_inc && count_inc > 0 {
-                let (other, mut name) = Self::from(
+                let mut name = self.from(
                     line.get((pos_inc + 1)..pos_dec).unwrap().to_string(),
                     line_num,
                     vec_table,
@@ -162,7 +161,7 @@ impl Process {
                     name = name.trim_start_matches(real_name).to_string();
                 }
 
-                this.merge(other);
+                //this.merge(other);
                 *line_num += 1;
 
                 let mult = (
@@ -189,6 +188,7 @@ impl Process {
             mut raw_value: &str,
             kind: Kind,
             line_num: &mut usize,
+            create: &mut bool,
         ) {
             *last_kind = kind;
             *last_raw_value = raw_value.to_string();
@@ -207,18 +207,36 @@ impl Process {
                         ),
                         Kind::Null,
                         line_num,
+                        &mut false,
                     );
 
-                    add_variable(
-                        table,
-                        last_kind,
-                        last_raw_value,
-                        entry_list,
-                        operator_order,
-                        Operator::UseFunction.get_str(),
-                        Kind::Operator,
-                        line_num,
-                    );
+                    if *create {
+                        add_variable(
+                            table,
+                            last_kind,
+                            last_raw_value,
+                            entry_list,
+                            operator_order,
+                            Operator::SetFunction.get_str(),
+                            Kind::Operator,
+                            line_num,
+                            &mut false,
+                        );
+
+                        *create = false;
+                    } else {
+                        add_variable(
+                            table,
+                            last_kind,
+                            last_raw_value,
+                            entry_list,
+                            operator_order,
+                            Operator::UseFunction.get_str(),
+                            Kind::Operator,
+                            line_num,
+                            &mut false,
+                        );
+                    }
 
                     add_variable(
                         table,
@@ -231,9 +249,14 @@ impl Process {
                             .unwrap(),
                         Kind::Null,
                         line_num,
+                        &mut false,
                     );
-                } else {
+                } else if kind != Kind::Operator
+                    || raw_value != Operator::SetFunction.get_str()
+                    || !*create
+                {
                     let i = entry_list.len();
+
                     let mut name = format!(
                         "{}{}{}{}{}{}",
                         {
@@ -248,6 +271,7 @@ impl Process {
                         usize_to_string(*line_num),
                         CHAR_SEP_NAME,
                     );
+
                     match kind {
                         Kind::Null => {
                             if raw_value.contains(CHAR_SEP_NAME) {
@@ -262,6 +286,7 @@ impl Process {
                     table.set_from_file(&name, raw_value, kind);
 
                     let var = table.get(&name);
+
                     if var.kind == Kind::Operator {
                         let pri = OPERATORS[var.pos].get_priority();
 
@@ -288,11 +313,13 @@ impl Process {
         let mut last_kind: Kind = Kind::Operator;
         let mut last_raw_value: String = String::new();
 
+        let mut create = false;
+
         while n < line_char.len() {
             c = line_char[n];
 
             if !(c.is_whitespace() || c == '(' || c == ')') {
-                let (raw_value, kind) = get_kind(line_char.get(n..).unwrap());
+                let (raw_value, kind) = get_kind(line_char.get(n..).unwrap(), &mut create);
 
                 if raw_value == Operator::Sub.get_str() && last_kind == Kind::Operator {
                     if last_raw_value.as_str() == Operator::Add.get_str() {
@@ -309,6 +336,7 @@ impl Process {
                             &raw_value,
                             kind,
                             line_num,
+                            &mut create,
                         );
                     } else {
                         #[allow(unused_variables)]
@@ -321,6 +349,7 @@ impl Process {
                             "-1",
                             Kind::Number,
                             line_num,
+                            &mut create,
                         );
 
                         #[allow(unused_variables)]
@@ -333,6 +362,7 @@ impl Process {
                             Operator::Mul.get_str(),
                             Kind::Operator,
                             line_num,
+                            &mut create,
                         );
                     }
                 } else {
@@ -346,6 +376,7 @@ impl Process {
                         &raw_value,
                         kind,
                         line_num,
+                        &mut create,
                     );
                 }
 
@@ -427,23 +458,20 @@ impl Process {
             }
         }
 
-        let operations = convert(
+        // let instructions =
+        self.convert(
             table.clone(),
             &mut entry_list,
             &mut operator_order,
             vec_table,
-            this.operations.len(),
         );
 
         table.clear_operator();
         table.clear_null();
 
-        this.merge(Process {
-            table: table,
-            operations: operations,
-        });
+        self.table.merge(table);
 
-        return (this, name);
+        return name;
     }
 
     #[cfg(feature = "print")]
@@ -452,17 +480,25 @@ impl Process {
             let var = table.get(name);
 
             let real_name = get_real_name(name);
-            let simplified_name = name
+
+            let mut simplified_name = name
                 .trim_start_matches(real_name)
-                .trim_matches(CHAR_SEP_NAME);
-            let simplified_name: Vec<&str> =
+                .trim_matches(CHAR_SEP_NAME)
+                .to_string();
+
+            let simplified_names: Vec<&str> =
                 simplified_name.split_terminator(CHAR_SEP_NAME).collect();
-            let simplified_name = format!(
-                "{}{}{}",
-                real_name,
-                string_to_usize(simplified_name[0]),
-                string_to_usize(simplified_name[1]),
-            );
+
+            if simplified_names.len() > 0 {
+                simplified_name = format!(
+                    "{}{}{}",
+                    real_name,
+                    string_to_usize(simplified_names[0]),
+                    string_to_usize(simplified_names[1]),
+                );
+            } else {
+                simplified_name = format!("{}", string_to_usize(real_name));
+            }
 
             eprint!(
                 "|{}: {}: |{}||\t",
@@ -490,8 +526,10 @@ impl Process {
         eprintln!("level: {}", vec_table.len() - 1);
         eprintln!("\n{}\t: {}\t: {}\n", "name", "kind", "value");
 
-        for j in pos..(this.operations.len()) {
-            let (instruction, names) = &mut this.operations[j];
+        let mut j = pos;
+
+        while j < this.instructions.len() {
+            let (instruction, names) = &mut this.instructions[j];
             let mut vars: Vec<Variable> = Vec::with_capacity(names.len());
 
             for name in names.iter() {
@@ -591,6 +629,10 @@ impl Process {
                     less_equal(&vars[0], &vars[1], &names[0], &names[1], &mut this.table)
                 }
                 Intruction::GOTO => {
+                    let position = string_to_usize(&names[0]);
+                    j = position;
+                }
+                Intruction::GOTOFN => {
                     let name = names.remove(0);
                     let real_name = get_real_name(&name);
 
@@ -613,10 +655,9 @@ impl Process {
 
                     match vec_table.get(real_name) {
                         Some((level, var)) => {
-                            let tuple_b = var
-                                .get_function(real_name, level)
-                                .unwrap()
-                                .run(&tuple, self, vec_table);
+                            let function = var.get_function(real_name, level).unwrap();
+
+                            let tuple_b = function.run(&tuple, self, vec_table);
 
                             match tuple_b.len() {
                                 0 => this.table.set_null(&name, true),
@@ -651,7 +692,7 @@ impl Process {
                     }
                 }
                 Intruction::END => {
-                    if this.table.get(&names[0]).kind == Kind::Tuple {
+                    if names.len() > 1 && this.table.get(&names[0]).kind == Kind::Tuple {
                         return this
                             .table
                             .get(&names[0])
@@ -670,6 +711,8 @@ impl Process {
                     this.table.set_tuple(&names[0], tuple);
                 }
             }
+
+            j += 1;
         }
 
         eprintln!("\n------------------------------------------------------------\n");
@@ -681,20 +724,250 @@ impl Process {
 
         return Tuple::new();
     }
+
+    fn convert(
+        &mut self,
+        mut table: Table,
+        entry_list: &mut Vec<String>,
+        operator_order: &mut Vec<Vec<usize>>,
+        vec_table: &mut VecTable,
+    ) {
+        // -> Vec<(Intruction, Vec<String>)>
+        // let mut instructions: Vec<(Intruction, Vec<String>)> = Vec::new();
+
+        if operator_order.len() > 0 {
+            let mut name_a = String::from(CHAR_SEP_NAME);
+            let mut name_b = String::from(CHAR_SEP_NAME);
+
+            let mut delete: (bool, bool);
+
+            let mut operator;
+
+            let mut operator_priority = operator_order.len() - 1;
+            let mut operator_position;
+
+            while operator_order.len() > 0 {
+                while operator_order[operator_priority].len() > 0 {
+                    operator_position = operator_order[operator_priority].remove(0);
+
+                    {
+                        let name = entry_list[operator_position].as_str();
+                        operator = OPERATORS[table.get(name).pos];
+                    }
+
+                    if operator_position < entry_list.len() - 1 {
+                        name_b = entry_list[operator_position + 1].to_string();
+                        let real_name = get_real_name(&name_b);
+
+                        if real_name.contains("(") {
+                            name_b = name_b.trim_start_matches(real_name).to_string();
+                        }
+                    }
+
+                    if operator_position > 0 {
+                        name_a = entry_list[operator_position - 1].to_string();
+                        let real_name = get_real_name(&name_b);
+
+                        match operator {
+                            Operator::SetFunction | Operator::UseFunction => {}
+                            _ => {
+                                if real_name.contains("(") {
+                                    name_a = name_a.trim_start_matches(real_name).to_string();
+                                }
+                            }
+                        };
+                    }
+
+                    delete = (false, true);
+
+                    match operator.get_priority() {
+                        P_ASSIGNEMENT => {
+                            // let name_a_buf = get_real_name(&name_a).to_string();
+                            //let name_b_buf = name_b.to_string();
+
+                            if operator == Operator::Asign {
+                                self.instructions
+                                    .push((Intruction::ASG, vec![name_a, name_b]))
+                            } else {
+                                let name_a_buf = name_a.to_string();
+
+                                match operator {
+                                    Operator::AddAsign => self
+                                        .instructions
+                                        .push((Intruction::ADD, vec![name_a, name_b])),
+                                    Operator::SubAsign => self
+                                        .instructions
+                                        .push((Intruction::SUB, vec![name_a, name_b])),
+                                    Operator::MulAsign => self
+                                        .instructions
+                                        .push((Intruction::MUL, vec![name_a, name_b])),
+                                    Operator::DivAsign => self
+                                        .instructions
+                                        .push((Intruction::DIV, vec![name_a, name_b])),
+                                    Operator::ModAsign => self
+                                        .instructions
+                                        .push((Intruction::MOD, vec![name_a, name_b])),
+                                    Operator::PowAsign => self
+                                        .instructions
+                                        .push((Intruction::POW, vec![name_a, name_b])),
+                                    Operator::BandAsign => self
+                                        .instructions
+                                        .push((Intruction::BAND, vec![name_a, name_b])),
+                                    Operator::XorAsign => self
+                                        .instructions
+                                        .push((Intruction::XOR, vec![name_a, name_b])),
+                                    Operator::BorAsign => self
+                                        .instructions
+                                        .push((Intruction::BOR, vec![name_a, name_b])),
+                                    _ => {}
+                                }
+
+                                self.instructions
+                                    .push((Intruction::ASG, vec![name_a_buf.clone(), name_a_buf]))
+                            }
+                        }
+                        _ => match operator {
+                            Operator::Not => {
+                                self.instructions.push((Intruction::NOT, vec![name_b]));
+                                delete = (false, false);
+                            }
+                            Operator::Pow => self
+                                .instructions
+                                .push((Intruction::POW, vec![name_a, name_b])),
+                            Operator::Mul => self
+                                .instructions
+                                .push((Intruction::MUL, vec![name_a, name_b])),
+                            Operator::Div => self
+                                .instructions
+                                .push((Intruction::DIV, vec![name_a, name_b])),
+                            Operator::DivInt => self
+                                .instructions
+                                .push((Intruction::IDIV, vec![name_a, name_b])),
+                            Operator::Mod => self
+                                .instructions
+                                .push((Intruction::MOD, vec![name_a, name_b])),
+                            Operator::Add => self
+                                .instructions
+                                .push((Intruction::ADD, vec![name_a, name_b])),
+                            Operator::Sub => self
+                                .instructions
+                                .push((Intruction::SUB, vec![name_a, name_b])),
+                            Operator::Band => self
+                                .instructions
+                                .push((Intruction::BAND, vec![name_a, name_b])),
+                            Operator::Xor => self
+                                .instructions
+                                .push((Intruction::XOR, vec![name_a, name_b])),
+                            Operator::Bor => self
+                                .instructions
+                                .push((Intruction::BOR, vec![name_a, name_b])),
+                            Operator::Equal => self
+                                .instructions
+                                .push((Intruction::EQU, vec![name_a, name_b])),
+                            Operator::NotEqual => self
+                                .instructions
+                                .push((Intruction::NEQU, vec![name_a, name_b])),
+                            Operator::GreaterEqual => self
+                                .instructions
+                                .push((Intruction::EGRE, vec![name_a, name_b])),
+                            Operator::LesserEqual => self
+                                .instructions
+                                .push((Intruction::ELES, vec![name_a, name_b])),
+                            Operator::Greater => self
+                                .instructions
+                                .push((Intruction::GRE, vec![name_a, name_b])),
+                            Operator::Lesser => self
+                                .instructions
+                                .push((Intruction::LES, vec![name_a, name_b])),
+                            Operator::And => self
+                                .instructions
+                                .push((Intruction::AND, vec![name_a, name_b])),
+                            Operator::Or => self
+                                .instructions
+                                .push((Intruction::OR, vec![name_a, name_b])),
+                            Operator::Return => {
+                                self.instructions.push((Intruction::END, vec![name_b]))
+                            }
+                            Operator::End => {
+                                let position = self.incomplete_function.pop().unwrap();
+
+                                self.instructions.insert(
+                                    position,
+                                    (
+                                        Intruction::GOTO,
+                                        vec![usize_to_string(
+                                            self.instructions.len()
+                                                + self.incomplete_function.len()
+                                                + 1,
+                                        )],
+                                    ),
+                                );
+
+                                self.instructions.push((Intruction::END, Vec::new()));
+                                delete = (false, false);
+                            }
+                            Operator::Separator => self
+                                .instructions
+                                .push((Intruction::TUP, vec![name_a, name_b])),
+                            Operator::SetFunction => {
+                                self.incomplete_function
+                                    .push(self.instructions.len() + self.incomplete_function.len());
+
+                                vec_table.set_function(
+                                    get_real_name(&name_a),
+                                    Function::new(
+                                        false,
+                                        self.instructions.len() + self.incomplete_function.len(),
+                                        table.get(&name_b).get_tuple(&name_b, &table).unwrap(),
+                                    ),
+                                );
+                            }
+                            Operator::UseFunction => self
+                                .instructions
+                                .push((Intruction::GOTOFN, vec![name_a, name_b])),
+                            _ => break,
+                        },
+                    }
+
+                    name_a = String::from(CHAR_SEP_NAME);
+                    name_b = String::from(CHAR_SEP_NAME);
+
+                    fn remove(table: &mut Table, entry_list: &mut Vec<String>, pos: usize) {
+                        let name = entry_list.remove(pos);
+                        table.remove_entry(&name);
+                    }
+
+                    if delete.1 {
+                        remove(&mut table, entry_list, operator_position + 1);
+                    }
+
+                    remove(&mut table, entry_list, operator_position);
+
+                    if delete.0 {
+                        remove(&mut table, entry_list, operator_position - 1);
+                    }
+                }
+
+                operator_order.pop();
+
+                if operator_priority > 0 {
+                    operator_priority -= 1;
+                }
+            }
+        }
+
+        //return instructions;
+    }
 }
 
 impl Clone for Process {
     fn clone(&self) -> Self {
         Self {
             table: self.table.clone(),
-            operations: self.operations.clone(),
+            instructions: self.instructions.clone(),
+            incomplete_function: self.incomplete_function.clone(),
         }
     }
-}
-
-fn remove(table: &mut Table, entry_list: &mut Vec<String>, pos: usize) {
-    let name = entry_list.remove(pos);
-    table.remove_entry(&name);
 }
 
 pub fn get_real_name(name: &str) -> &str {
@@ -702,187 +975,4 @@ pub fn get_real_name(name: &str) -> &str {
         Some(n) => name.get(0..n).unwrap(),
         None => name,
     }
-}
-
-fn convert(
-    mut table: Table,
-    entry_list: &mut Vec<String>,
-    operator_order: &mut Vec<Vec<usize>>,
-    vec_table: &mut VecTable,
-    at: usize,
-) -> Vec<(Intruction, Vec<String>)> {
-    let mut operations: Vec<(Intruction, Vec<String>)> = Vec::new();
-
-    if operator_order.len() > 0 {
-        let mut name_a = String::from(CHAR_SEP_NAME);
-        let mut name_b = String::from(CHAR_SEP_NAME);
-
-        let mut delete: (bool, bool);
-
-        let mut operator;
-
-        let mut operator_priority = operator_order.len() - 1;
-        let mut operator_position;
-
-        while operator_order.len() > 0 {
-            while operator_order[operator_priority].len() > 0 {
-                operator_position = operator_order[operator_priority].remove(0);
-
-                {
-                    let name = entry_list[operator_position].as_str();
-                    operator = OPERATORS[table.get(name).pos];
-                }
-
-                if operator_position < entry_list.len() - 1 {
-                    name_b = entry_list[operator_position + 1].to_string();
-                    let real_name = get_real_name(&name_b);
-
-                    if real_name.contains("(") {
-                        name_b = name_b.trim_start_matches(real_name).to_string();
-                    }
-                }
-
-                if operator_position > 0 {
-                    name_a = entry_list[operator_position - 1].to_string();
-                    let real_name = get_real_name(&name_b);
-
-                    match operator {
-                        Operator::SetFunction | Operator::UseFunction => {}
-                        _ => {
-                            if real_name.contains("(") {
-                                name_a = name_a.trim_start_matches(real_name).to_string();
-                            }
-                        }
-                    };
-                }
-
-                delete = (false, true);
-
-                match operator.get_priority() {
-                    P_ASSIGNEMENT => {
-                        // let name_a_buf = get_real_name(&name_a).to_string();
-                        //let name_b_buf = name_b.to_string();
-
-                        if operator == Operator::Asign {
-                            operations.push((Intruction::ASG, vec![name_a, name_b]))
-                        } else {
-                            let name_a_buf = name_a.to_string();
-
-                            match operator {
-                                Operator::AddAsign => {
-                                    operations.push((Intruction::ADD, vec![name_a, name_b]))
-                                }
-                                Operator::SubAsign => {
-                                    operations.push((Intruction::SUB, vec![name_a, name_b]))
-                                }
-                                Operator::MulAsign => {
-                                    operations.push((Intruction::MUL, vec![name_a, name_b]))
-                                }
-                                Operator::DivAsign => {
-                                    operations.push((Intruction::DIV, vec![name_a, name_b]))
-                                }
-                                Operator::ModAsign => {
-                                    operations.push((Intruction::MOD, vec![name_a, name_b]))
-                                }
-                                Operator::PowAsign => {
-                                    operations.push((Intruction::POW, vec![name_a, name_b]))
-                                }
-                                Operator::BandAsign => {
-                                    operations.push((Intruction::BAND, vec![name_a, name_b]))
-                                }
-                                Operator::XorAsign => {
-                                    operations.push((Intruction::XOR, vec![name_a, name_b]))
-                                }
-                                Operator::BorAsign => {
-                                    operations.push((Intruction::BOR, vec![name_a, name_b]))
-                                }
-                                _ => {}
-                            }
-
-                            operations.push((Intruction::ASG, vec![name_a_buf.clone(), name_a_buf]))
-                        }
-                    }
-                    _ => match operator {
-                        Operator::Not => {
-                            operations.push((Intruction::NOT, vec![name_b]));
-                            delete = (false, false);
-                        }
-                        Operator::Pow => operations.push((Intruction::POW, vec![name_a, name_b])),
-                        Operator::Mul => operations.push((Intruction::MUL, vec![name_a, name_b])),
-                        Operator::Div => operations.push((Intruction::DIV, vec![name_a, name_b])),
-                        Operator::DivInt => {
-                            operations.push((Intruction::IDIV, vec![name_a, name_b]))
-                        }
-                        Operator::Mod => operations.push((Intruction::MOD, vec![name_a, name_b])),
-                        Operator::Add => operations.push((Intruction::ADD, vec![name_a, name_b])),
-                        Operator::Sub => operations.push((Intruction::SUB, vec![name_a, name_b])),
-                        Operator::Band => operations.push((Intruction::BAND, vec![name_a, name_b])),
-                        Operator::Xor => operations.push((Intruction::XOR, vec![name_a, name_b])),
-                        Operator::Bor => operations.push((Intruction::BOR, vec![name_a, name_b])),
-                        Operator::Equal => operations.push((Intruction::EQU, vec![name_a, name_b])),
-                        Operator::NotEqual => {
-                            operations.push((Intruction::NEQU, vec![name_a, name_b]))
-                        }
-                        Operator::GreaterEqual => {
-                            operations.push((Intruction::EGRE, vec![name_a, name_b]))
-                        }
-                        Operator::LesserEqual => {
-                            operations.push((Intruction::ELES, vec![name_a, name_b]))
-                        }
-                        Operator::Greater => {
-                            operations.push((Intruction::GRE, vec![name_a, name_b]))
-                        }
-                        Operator::Lesser => {
-                            operations.push((Intruction::LES, vec![name_a, name_b]))
-                        }
-                        Operator::And => operations.push((Intruction::AND, vec![name_a, name_b])),
-                        Operator::Or => operations.push((Intruction::OR, vec![name_a, name_b])),
-                        Operator::Return => operations.push((Intruction::END, vec![name_b])),
-                        Operator::End => {
-                            operations.push((Intruction::END, Vec::new()));
-                            delete = (false, false);
-                        }
-                        Operator::Separator => {
-                            operations.push((Intruction::TUP, vec![name_a, name_b]))
-                        }
-                        Operator::SetFunction => {
-                            vec_table.set_function(
-                                &name_a,
-                                Function::new(
-                                    false,
-                                    at + operations.len(),
-                                    table.get(&name_b).get_tuple(&name_b, &table).unwrap(),
-                                ),
-                            );
-                        }
-                        Operator::UseFunction => {
-                            operations.push((Intruction::GOTO, vec![name_a, name_b]))
-                        }
-                        _ => break,
-                    },
-                }
-
-                name_a = String::from(CHAR_SEP_NAME);
-                name_b = String::from(CHAR_SEP_NAME);
-
-                if delete.1 {
-                    remove(&mut table, entry_list, operator_position + 1);
-                }
-
-                remove(&mut table, entry_list, operator_position);
-
-                if delete.0 {
-                    remove(&mut table, entry_list, operator_position - 1);
-                }
-            }
-
-            operator_order.pop();
-
-            if operator_priority > 0 {
-                operator_priority -= 1;
-            }
-        }
-    }
-
-    return operations;
 }

@@ -1,0 +1,12 @@
+k = 5 - 6
+
+fn test()
+    b = 6 * 2
+    print(b)
+
+    return b
+end
+
+a = 5
+
+c = test()
