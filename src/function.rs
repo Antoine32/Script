@@ -94,6 +94,7 @@ impl Function {
         let val = if self.default_fn {
             DEFAULTS_FUNCTIONS[self.pos].run(vec_table)
         } else {
+            eprintln!("");
             process.run(vec_table, self.pos)
         };
 
