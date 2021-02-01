@@ -142,6 +142,19 @@ pub fn division(var_a: &Variable, var_b: &Variable, name_a: &str, name_b: &str, 
     )
 }
 
+pub fn integer_division(
+    var_a: &Variable,
+    var_b: &Variable,
+    name_a: &str,
+    name_b: &str,
+    table: &mut Table,
+) {
+    table.set_bigint(
+        name_a,
+        var_a.get_bigint(name_a, table).unwrap() / var_b.get_bigint(name_b, table).unwrap(),
+    )
+}
+
 pub fn modulo(var_a: &Variable, var_b: &Variable, name_a: &str, name_b: &str, table: &mut Table) {
     if var_a.kind == Kind::BigInt && var_b.kind == Kind::BigInt {
         let num_a = var_a.get_bigint(name_a, table).unwrap();
