@@ -1,9 +1,28 @@
-fn test(num, k)
-    print(num + " | " + k)
-    return num + k
+fn sq(a, b)
+    fn test(a, b)
+        print(a + ' | ' + b)
+        
+        fn abc(a, b)
+            return 9
+        end
+    end
+
+    fn ghj(a, b)
+        return 9
+    end
+
+    test(a, b)
+
+    return a * b
 end
 
-allo = test(5, 90)
+fn testk(a, b)
+    print(a + ' | ' + b)
+    
+    fn abck(a, b)
+        return 9
+    end
+end
 
+b = sq(5, 6)
 
-print(allo)

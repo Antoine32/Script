@@ -36,6 +36,27 @@ impl Process {
         self.table.merge(other.table);
     }
 
+    #[cfg(feature = "print")]
+    pub fn print_intructions(&self) {
+        for i in 0..self.instructions.len() {
+            eprint!("{}: ", i);
+
+            let (instruct, names) = &self.instructions[i];
+            Self::print_line(instruct, names, &self.table);
+        }
+    }
+
+    #[cfg(feature = "print")]
+    pub fn print_line(instuction: &Intruction, names: &Vec<String>, table: &Table) {
+        eprint!("{}\t", instuction);
+
+        for name in names.iter() {
+            Self::print_var(name, table);
+        }
+
+        eprintln!("");
+    }
+
     pub fn from(
         &mut self,
         mut line: String,
@@ -459,7 +480,6 @@ impl Process {
             }
         }
 
-        // let instructions =
         self.convert(
             &mut table,
             &mut entry_list,
@@ -509,17 +529,6 @@ impl Process {
                 var.get_string(name, table).unwrap()
             );
         }
-    }
-
-    #[cfg(feature = "print")]
-    pub fn print_line(instuction: &Intruction, names: &Vec<String>, table: &Table) {
-        eprint!("{}\t", instuction);
-
-        for name in names.iter() {
-            Self::print_var(name, table);
-        }
-
-        eprintln!("");
     }
 
     pub fn get_variable(vec_table: &mut VecTable, name: &str, table: &mut Table) {
@@ -924,7 +933,7 @@ impl Process {
                                 self.instructions.push((Intruction::END, Vec::new()));
                                 delete = (false, false);
                             }
-                            Operator::Separator => {
+                            Operator::SeparatorTuple => {
                                 let mut tuple =
                                     table.get(&name_a).get_tuple(&name_a, &table).unwrap();
                                 tuple.push(&table.get(&name_b), &name_b, &table);
@@ -933,8 +942,7 @@ impl Process {
                                 // .push((Intruction::TUP, vec![name_a, name_b]));
                             }
                             Operator::SetFunction => {
-                                self.incomplete_function
-                                    .push(start_pos + self.incomplete_function.len());
+                                self.incomplete_function.push(start_pos);
 
                                 vec_table.set_function(
                                     get_real_name(&name_a),

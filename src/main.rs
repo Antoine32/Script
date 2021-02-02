@@ -444,6 +444,12 @@ fn main() {
     let time_a = timer_a.elapsed();
 
     eprintln!("\n---------------------------------------------------------------------\n");
+
+    #[cfg(feature = "print")]
+    process_lines.print_intructions();
+
+    eprintln!("\n---------------------------------------------------------------------\n");
+
     #[cfg(feature = "time")]
     let timer_b = Instant::now();
 

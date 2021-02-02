@@ -17,7 +17,6 @@ pub struct Function {
 
 impl Function {
     pub fn new(default_fn: bool, pos: usize, arguments: Tuple) -> Self {
-        println!("asdf: {}", arguments);
         Self {
             default_fn: default_fn,
             pos: pos,
