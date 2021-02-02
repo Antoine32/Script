@@ -7,7 +7,7 @@ use crate::vec_table::*;
 #[allow(unused_imports)]
 use crate::{eprint, eprintln};
 
-pub const ENUMERATE_ARGS: &str = "#"; // if the name of the last argument of a function ends with this it will take any amount of arguments inside of itself as a tuple (the name of the variable when used wont have this in it)
+pub const ENUMERATE_ARGS: &str = "?"; // if the name of the last argument of a function ends with this it will take any amount of arguments inside of itself as a tuple (the name of the variable when used wont have this in it)
 
 pub struct Function {
     pub default_fn: bool,
@@ -17,6 +17,7 @@ pub struct Function {
 
 impl Function {
     pub fn new(default_fn: bool, pos: usize, arguments: Tuple) -> Self {
+        println!("asdf: {}", arguments);
         Self {
             default_fn: default_fn,
             pos: pos,
@@ -91,14 +92,21 @@ impl Function {
             }
         }
 
-        let val = if self.default_fn {
-            DEFAULTS_FUNCTIONS[self.pos].run(vec_table)
+        let val;
+
+        if self.default_fn {
+            val = DEFAULTS_FUNCTIONS[self.pos].run(vec_table);
         } else {
             eprintln!("");
-            process.run(vec_table, self.pos)
+
+            val = process.run(vec_table, self.pos);
+
+            eprintln!("\nlevel: {}", vec_table.len() - 2);
+            eprintln!("\n{}\t: {}\t: {}\n", "name", "kind", "value");
         };
 
         vec_table.remove_level();
+
         return val;
     }
 }

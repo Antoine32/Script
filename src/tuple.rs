@@ -51,6 +51,45 @@ impl Tuple {
         )
     }
 
+    pub fn set(&mut self, pos: usize, var: &Variable, name: &str, table: &Table) {
+        if pos <= self.len() {
+            for _ in pos..(self.len()) {
+                self.push_null("");
+            }
+
+            self.push(var, name, table);
+        } else {
+            let name_b = &self.get_name(pos).to_string();
+
+            match var.kind {
+                Kind::String => {
+                    self.table
+                        .set_string(name_b, table.vec_string[var.pos].clone());
+                }
+                Kind::Number => {
+                    self.table
+                        .set_number(name_b, table.vec_number[var.pos].clone());
+                }
+                Kind::BigInt => {
+                    self.table
+                        .set_bigint(name_b, table.vec_bigint[var.pos].clone());
+                }
+                Kind::Bool => {
+                    self.table.set_bool(name_b, table.vec_bool[var.pos].clone());
+                }
+                Kind::Tuple => {
+                    self.table
+                        .set_tuple(name_b, table.vec_tuple[var.pos].clone());
+                }
+                Kind::Operator => {}
+                Kind::Null => {
+                    self.table.set_null(name_b, true);
+                }
+                Kind::Function => {}
+            }
+        }
+    }
+
     pub fn push_null(&mut self, name: &str) {
         let name = self.get_new_name(name);
         self.table.set_null(&name, true);

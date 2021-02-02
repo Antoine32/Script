@@ -89,7 +89,7 @@ fn pause() {
     println!("{}\n", 13 as char);
 }
 
-const MINUS: u8 = 32; // meant to skip the usage of control character
+const MINUS: u8 = 160; // meant to skip the usage of any character that means something to the program or is a control character
 
 pub fn usize_to_string(mut num: usize) -> String {
     let mut string = String::new();
@@ -266,7 +266,7 @@ pub fn process_text(content: String, vec_table: &mut VecTable) -> Process {
         .replace(";\n", "\n")
         .replace(";", "\n")
         .rsplit(|c: char| c == '\n' || c == ';')
-        //.filter(|c| c.len() > 0)
+        .filter(|c| c.len() > 0)
         .map(|s| s.to_string())
         .collect();
 
