@@ -1,4 +1,4 @@
 /target
 /monitor/node_modules
-/monitor
+/monitor/*
 !/monitor/webdir
