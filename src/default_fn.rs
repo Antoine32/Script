@@ -4,11 +4,12 @@ use crate::table::*;
 use crate::tuple::*;
 use crate::vec_table::*;
 use num::{BigInt, FromPrimitive, Zero};
+use rand::prelude::*;
 
 #[allow(unused_imports)]
 use crate::{eprint, eprintln};
 
-pub const DEFAULTS_FUNCTIONS: [DefaultFunction; 9] = [
+pub const DEFAULTS_FUNCTIONS: [DefaultFunction; 10] = [
     DefaultFunction::Read,
     DefaultFunction::Pause,
     DefaultFunction::Print,
@@ -18,6 +19,7 @@ pub const DEFAULTS_FUNCTIONS: [DefaultFunction; 9] = [
     DefaultFunction::Ceil,
     DefaultFunction::Sqrt,
     DefaultFunction::Pow,
+    DefaultFunction::Rand,
 ];
 
 pub const DEFAULTS_FUNCTIONS_STR: [&str; DEFAULTS_FUNCTIONS.len()] = [
@@ -30,6 +32,7 @@ pub const DEFAULTS_FUNCTIONS_STR: [&str; DEFAULTS_FUNCTIONS.len()] = [
     DEFAULTS_FUNCTIONS[6].get_str(),
     DEFAULTS_FUNCTIONS[7].get_str(),
     DEFAULTS_FUNCTIONS[8].get_str(),
+    DEFAULTS_FUNCTIONS[9].get_str(),
 ];
 
 pub const DEFAULTS_FUNCTIONS_ARGS: [&[&str]; DEFAULTS_FUNCTIONS.len()] = [
@@ -42,6 +45,7 @@ pub const DEFAULTS_FUNCTIONS_ARGS: [&[&str]; DEFAULTS_FUNCTIONS.len()] = [
     DEFAULTS_FUNCTIONS[6].get_arguments(),
     DEFAULTS_FUNCTIONS[7].get_arguments(),
     DEFAULTS_FUNCTIONS[8].get_arguments(),
+    DEFAULTS_FUNCTIONS[9].get_arguments(),
 ];
 
 pub enum DefaultFunction {
@@ -54,6 +58,7 @@ pub enum DefaultFunction {
     Ceil,
     Sqrt,
     Pow,
+    Rand,
 }
 
 impl DefaultFunction {
@@ -78,20 +83,22 @@ impl DefaultFunction {
             Self::Ceil => "ceil()",
             Self::Sqrt => "sqrt()",
             Self::Pow => "pow()",
+            Self::Rand => "rand()",
         }
     }
 
     pub const fn get_arguments(&self) -> &[&str] {
         match self {
-            Self::Print => &PRINT_ARGS,
+            Self::Pause => &PAUSE_ARGS,
             Self::Read => &READ_ARGS,
+            Self::Print => &PRINT_ARGS,
             Self::Int => &INT_ARGS,
             Self::Round => &ROUND_ARGS,
             Self::Floor => &FLOOR_ARGS,
             Self::Ceil => &CEIL_ARGS,
             Self::Sqrt => &SQRT_ARGS,
             Self::Pow => &POW_ARGS,
-            Self::Pause => &PAUSE_ARGS,
+            Self::Rand => &RAND_ARGS,
         }
     }
 
@@ -106,6 +113,7 @@ impl DefaultFunction {
             Self::Ceil => ceil(vec_table),
             Self::Sqrt => sqrt(vec_table),
             Self::Pow => pow(vec_table),
+            Self::Rand => rand(vec_table),
         }
     }
 }
@@ -128,6 +136,7 @@ impl std::cmp::PartialEq for DefaultFunction {
             Self::Ceil => matches!(other, Self::Ceil),
             Self::Sqrt => matches!(other, Self::Sqrt),
             Self::Pow => matches!(other, Self::Pow),
+            Self::Rand => matches!(other, Self::Rand),
         }
     }
 }
@@ -144,6 +153,7 @@ impl Clone for DefaultFunction {
             Self::Ceil => Self::Ceil,
             Self::Sqrt => Self::Sqrt,
             Self::Pow => Self::Pow,
+            Self::Rand => Self::Rand,
         }
     }
 }
@@ -272,7 +282,6 @@ const SQRT_ARGS: [&str; 1] = ["num"];
 
 fn sqrt(vec_table: &mut VecTable) -> Tuple {
     let table = vec_table.get_level(vec_table.len() - 1);
-
     let mut tuple = Tuple::new();
 
     if table.get("num").kind == Kind::Number {
@@ -288,7 +297,6 @@ const POW_ARGS: [&str; 2] = ["num", "exp"];
 
 fn pow(vec_table: &mut VecTable) -> Tuple {
     let table = vec_table.get_level(vec_table.len() - 1);
-
     let mut tuple = Tuple::new();
 
     if table.get("num").kind == Kind::Number {
@@ -299,6 +307,32 @@ fn pow(vec_table: &mut VecTable) -> Tuple {
             bigint_pow(get_bigint(table, "num"), get_bigint(table, "exp")),
         );
     }
+
+    return tuple;
+}
+
+const RAND_ARGS: [&str; 2] = ["min", "max"];
+
+fn rand(vec_table: &mut VecTable) -> Tuple {
+    let table = vec_table.get_level(vec_table.len() - 1);
+    let mut tuple = Tuple::new();
+
+    let mut min = get_number(table, "min");
+    let mut max = get_number(table, "max");
+
+    if min < max {
+        let buf = min;
+        min = max;
+        max = buf;
+    }
+
+    if min == 0.0 && max == 0.0 {
+        max = 1.0;
+    }
+
+    let delta = min - max;
+
+    tuple.set_number("", (random::<f64>() % delta) + min);
 
     return tuple;
 }

@@ -3,8 +3,11 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
 
+#[cfg(any(feature = "monitor", feature = "memory", feature = "time"))]
+use std::time::Instant;
+
 #[cfg(feature = "time")]
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 #[cfg(feature = "monitor")]
 use websocket::sync::Server;
@@ -12,10 +15,10 @@ use websocket::sync::Server;
 #[cfg(feature = "monitor")]
 use websocket::Message;
 
-#[cfg(feature = "monitor")]
+#[cfg(any(feature = "monitor", feature = "memory"))]
 use std::{sync::mpsc::sync_channel, thread};
 
-#[cfg(feature = "monitor")]
+#[cfg(any(feature = "monitor", feature = "memory"))]
 use sysinfo::{ProcessExt, SystemExt};
 
 #[cfg(target_family = "unix")]
@@ -306,7 +309,7 @@ fn time_taken(elapsed: Duration) -> String {
     return string;
 }
 
-#[cfg(feature = "monitor")]
+#[cfg(any(feature = "monitor", feature = "memory"))]
 fn thread_memory() -> (
     std::sync::mpsc::Receiver<String>,
     std::sync::mpsc::SyncSender<bool>,
@@ -316,35 +319,39 @@ fn thread_memory() -> (
     let (sender_thread, receiver_ext) = sync_channel(2);
     let (sender_ext, receiver_thread) = sync_channel(2);
 
+    #[allow(unused_mut)]
     let mut senders: Vec<std::sync::mpsc::SyncSender<json::JsonValue>> = Vec::new();
 
-    let server = Server::bind("127.0.0.1:8889").unwrap();
+    #[cfg(feature = "monitor")]
+    {
+        let server = Server::bind("127.0.0.1:8889").unwrap();
 
-    println!("connect monitor program");
+        println!("connect monitor program");
 
-    for connection in server.filter_map(Result::ok) {
-        let (sender_thread_net, receiver_net): (
-            std::sync::mpsc::SyncSender<json::JsonValue>,
-            std::sync::mpsc::Receiver<json::JsonValue>,
-        ) = sync_channel(2);
+        for connection in server.filter_map(Result::ok) {
+            let (sender_thread_net, receiver_net): (
+                std::sync::mpsc::SyncSender<json::JsonValue>,
+                std::sync::mpsc::Receiver<json::JsonValue>,
+            ) = sync_channel(2);
 
-        senders.push(sender_thread_net);
+            senders.push(sender_thread_net);
 
-        thread::spawn(move || {
-            let mut client = connection.accept().unwrap();
+            thread::spawn(move || {
+                let mut client = connection.accept().unwrap();
 
-            loop {
-                let data = receiver_net.recv().unwrap();
-                let message = Message::text(data.to_string());
-                client.send_message(&message).unwrap();
+                loop {
+                    let data = receiver_net.recv().unwrap();
+                    let message = Message::text(data.to_string());
+                    client.send_message(&message).unwrap();
 
-                if data["memory"] == 0 {
-                    break;
+                    if data["memory"] == 0 {
+                        break;
+                    }
                 }
-            }
-        });
+            });
 
-        break;
+            break;
+        }
     }
 
     thread::spawn(move || {
@@ -421,7 +428,7 @@ fn thread_memory() -> (
 }
 
 fn main() {
-    #[cfg(feature = "monitor")]
+    #[cfg(any(feature = "monitor", feature = "memory"))]
     let (receiver, sender) = thread_memory();
 
     let mut vec_table = VecTable::new();
@@ -434,14 +441,14 @@ fn main() {
     }
 
     #[cfg(feature = "time")]
-    let timer_a = Instant::now();
+    let timer_interpretation = Instant::now();
 
     let content = readfile("test.te").unwrap();
 
     let process_lines = process_text(content, &mut vec_table);
 
     #[cfg(feature = "time")]
-    let time_a = timer_a.elapsed();
+    let time_interpretation = timer_interpretation.elapsed();
 
     eprintln!("\n---------------------------------------------------------------------\n");
 
@@ -449,6 +456,14 @@ fn main() {
     process_lines.print_intructions();
 
     eprintln!("\n---------------------------------------------------------------------\n");
+
+    #[cfg(feature = "time")]
+    let timer_a = Instant::now();
+
+    process_lines.run(&mut vec_table, 0);
+
+    #[cfg(feature = "time")]
+    let time_a = timer_a.elapsed();
 
     #[cfg(feature = "time")]
     let timer_b = Instant::now();
@@ -459,18 +474,28 @@ fn main() {
     let time_b = timer_b.elapsed();
 
     #[cfg(feature = "time")]
-    let time_c = timer_a.elapsed();
+    let timer_c = Instant::now();
+
+    process_lines.run(&mut vec_table, 0);
+
+    #[cfg(feature = "time")]
+    let time_c = timer_c.elapsed();
+
+    #[cfg(feature = "time")]
+    let time_total = timer_interpretation.elapsed();
 
     #[cfg(feature = "time")]
     {
         println!("\n----------------- Time taken -----------------\n");
 
-        println!("Interpretation Time :\n{}", time_taken(time_a));
-        println!("Execution Time :\n{}", time_taken(time_b));
-        println!("Total Time :\n{}", time_taken(time_c));
+        println!("Interpretation Time :\n{}", time_taken(time_interpretation));
+        println!("Execution Time 1 :\n{}", time_taken(time_a));
+        println!("Execution Time 2 :\n{}", time_taken(time_b));
+        println!("Execution Time 3 :\n{}", time_taken(time_c));
+        println!("Total Time :\n{}", time_taken(time_total));
     }
 
-    #[cfg(feature = "monitor")]
+    #[cfg(any(feature = "monitor", feature = "memory"))]
     {
         println!("\n---------------- Memory usage ----------------\n");
 
