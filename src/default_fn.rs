@@ -187,7 +187,7 @@ fn read() -> Tuple {
     return tuple;
 }
 
-const PRINT_ARGS: [&str; 1] = ["text#"]; // meant to end with ENUMERATE_ARGS, if ENUMERATE_ARGS isn't "#" anymore or doesn't exist, then please fix this
+const PRINT_ARGS: [&str; 1] = ["text?"]; // meant to end with ENUMERATE_ARGS, if ENUMERATE_ARGS isn't "?" anymore or doesn't exist, then please fix this
 
 fn print(vec_table: &mut VecTable) -> Tuple {
     let table = vec_table.get_level(vec_table.len() - 1);

@@ -36,12 +36,34 @@ impl Process {
         self.table.merge(other.table);
     }
 
+    #[cfg(feature = "print")]
+    pub fn print_intructions(&self) {
+        for i in 0..self.instructions.len() {
+            eprint!("{}: ", i);
+
+            let (instruct, names) = &self.instructions[i];
+            Self::print_line(instruct, names, &self.table);
+        }
+    }
+
+    #[cfg(feature = "print")]
+    pub fn print_line(instuction: &Intruction, names: &Vec<String>, table: &Table) {
+        eprint!("{}\t", instuction);
+
+        for name in names.iter() {
+            Self::print_var(name, table);
+        }
+
+        eprintln!("");
+    }
+
     pub fn from(
         &mut self,
         mut line: String,
         line_num: &mut usize,
         vec_table: &mut VecTable,
     ) -> String {
+        let start_pos = self.instructions.len();
         let mut at = 0;
 
         {
@@ -458,12 +480,12 @@ impl Process {
             }
         }
 
-        // let instructions =
         self.convert(
-            table.clone(),
+            &mut table,
             &mut entry_list,
             &mut operator_order,
             vec_table,
+            start_pos,
         );
 
         table.clear_operator();
@@ -509,15 +531,47 @@ impl Process {
         }
     }
 
-    #[cfg(feature = "print")]
-    pub fn print_line(instuction: &Intruction, names: &Vec<String>, table: &Table) {
-        eprint!("{}\t", instuction);
+    pub fn get_variable(vec_table: &mut VecTable, name: &str, table: &mut Table) {
+        let var = table.get(name);
 
-        for name in names.iter() {
-            Self::print_var(name, table);
+        match var.kind {
+            Kind::Null => {
+                let real_name = get_real_name(name);
+
+                match vec_table.get(real_name) {
+                    Some((level, var)) => match var.kind {
+                        Kind::String => {
+                            table.set_string(name, var.get_string(real_name, level).unwrap())
+                        }
+                        Kind::Number => {
+                            table.set_number(name, var.get_number(real_name, level).unwrap())
+                        }
+                        Kind::BigInt => {
+                            table.set_bigint(name, var.get_bigint(real_name, level).unwrap())
+                        }
+                        Kind::Bool => table.set_bool(name, var.get_bool(real_name, level).unwrap()),
+                        Kind::Tuple => {
+                            table.set_tuple(name, var.get_tuple(real_name, level).unwrap())
+                        }
+                        Kind::Null => table.set_null(name, true),
+                        Kind::Operator => {}
+                        Kind::Function => {}
+                    },
+                    None => {}
+                };
+            }
+            Kind::Tuple => {
+                let mut tuple = table.get_tuple(var.pos);
+
+                for i in 0..(tuple.len()) {
+                    let name_b = &tuple.get_name(i).to_string();
+                    Self::get_variable(vec_table, name_b, &mut tuple.table);
+                }
+
+                table.set_tuple(name, tuple);
+            }
+            _ => {}
         }
-
-        eprintln!("");
     }
 
     pub fn run(&self, vec_table: &mut VecTable, pos: usize) -> Tuple {
@@ -529,45 +583,18 @@ impl Process {
         let mut j = pos;
 
         while j < this.instructions.len() {
-            let (instruction, names) = &mut this.instructions[j];
+            let (instruction, names) = this.instructions[j].clone();
             let mut vars: Vec<Variable> = Vec::with_capacity(names.len());
 
             for name in names.iter() {
-                if this.table.get(name).kind == Kind::Null {
-                    let real_name = get_real_name(name);
-
-                    match vec_table.get(real_name) {
-                        Some((level, var)) => match var.kind {
-                            Kind::String => this
-                                .table
-                                .set_string(name, var.get_string(real_name, level).unwrap()),
-                            Kind::Number => this
-                                .table
-                                .set_number(name, var.get_number(real_name, level).unwrap()),
-                            Kind::BigInt => this
-                                .table
-                                .set_bigint(name, var.get_bigint(real_name, level).unwrap()),
-                            Kind::Bool => this
-                                .table
-                                .set_bool(name, var.get_bool(real_name, level).unwrap()),
-                            Kind::Tuple => this
-                                .table
-                                .set_tuple(name, var.get_tuple(real_name, level).unwrap()),
-                            Kind::Null => this.table.set_null(name, true),
-                            Kind::Operator => {}
-                            Kind::Function => {}
-                        },
-                        None => {}
-                    }
-                }
-
+                Self::get_variable(vec_table, name, &mut this.table);
                 vars.push(this.table.get(name).clone());
             }
 
             #[cfg(feature = "print")]
             Self::print_line(&instruction, &names, &this.table);
 
-            match *instruction {
+            match instruction {
                 Intruction::ASG => {
                     assign(
                         &vars[0],
@@ -633,16 +660,16 @@ impl Process {
                     j = position;
                 }
                 Intruction::GOTOFN => {
-                    let name = names.remove(0);
+                    let name = &names[0];
                     let real_name = get_real_name(&name);
 
                     let tuple = {
-                        if names.len() > 0 {
+                        if names.len() > 1 {
                             if vars[1].kind == Kind::Tuple {
                                 this.table.get_tuple(vars[1].pos)
                             } else {
                                 Tuple::from(
-                                    &names.iter().map(|n| n.as_str()).collect(),
+                                    &names.get(1..).unwrap().iter().map(|n| n.as_str()).collect(),
                                     &this.table,
                                 )
                             }
@@ -656,7 +683,6 @@ impl Process {
                     match vec_table.get(real_name) {
                         Some((level, var)) => {
                             let function = var.get_function(real_name, level).unwrap();
-
                             let tuple_b = function.run(&tuple, self, vec_table);
 
                             match tuple_b.len() {
@@ -727,10 +753,11 @@ impl Process {
 
     fn convert(
         &mut self,
-        mut table: Table,
+        table: &mut Table,
         entry_list: &mut Vec<String>,
         operator_order: &mut Vec<Vec<usize>>,
         vec_table: &mut VecTable,
+        start_pos: usize,
     ) {
         // -> Vec<(Intruction, Vec<String>)>
         // let mut instructions: Vec<(Intruction, Vec<String>)> = Vec::new();
@@ -906,19 +933,26 @@ impl Process {
                                 self.instructions.push((Intruction::END, Vec::new()));
                                 delete = (false, false);
                             }
-                            Operator::Separator => self
-                                .instructions
-                                .push((Intruction::TUP, vec![name_a, name_b])),
+                            Operator::SeparatorTuple => {
+                                let mut tuple =
+                                    table.get(&name_a).get_tuple(&name_a, &table).unwrap();
+                                tuple.push(&table.get(&name_b), &name_b, &table);
+                                table.set_tuple(&name_a, tuple);
+                                //self.instructions
+                                // .push((Intruction::TUP, vec![name_a, name_b]));
+                            }
                             Operator::SetFunction => {
-                                self.incomplete_function
-                                    .push(self.instructions.len() + self.incomplete_function.len());
+                                self.incomplete_function.push(start_pos);
 
                                 vec_table.set_function(
                                     get_real_name(&name_a),
                                     Function::new(
                                         false,
                                         self.instructions.len() + self.incomplete_function.len(),
-                                        table.get(&name_b).get_tuple(&name_b, &table).unwrap(),
+                                        self.table
+                                            .get(&name_b)
+                                            .get_tuple(&name_b, &self.table)
+                                            .unwrap(),
                                     ),
                                 );
                             }
@@ -932,19 +966,18 @@ impl Process {
                     name_a = String::from(CHAR_SEP_NAME);
                     name_b = String::from(CHAR_SEP_NAME);
 
-                    fn remove(table: &mut Table, entry_list: &mut Vec<String>, pos: usize) {
-                        let name = entry_list.remove(pos);
-                        table.remove_entry(&name);
+                    fn remove(entry_list: &mut Vec<String>, pos: usize) {
+                        entry_list.remove(pos);
                     }
 
                     if delete.1 {
-                        remove(&mut table, entry_list, operator_position + 1);
+                        remove(entry_list, operator_position + 1);
                     }
 
-                    remove(&mut table, entry_list, operator_position);
+                    remove(entry_list, operator_position);
 
                     if delete.0 {
-                        remove(&mut table, entry_list, operator_position - 1);
+                        remove(entry_list, operator_position - 1);
                     }
                 }
 
