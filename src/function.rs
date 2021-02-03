@@ -1,6 +1,7 @@
 use crate::default_fn::*;
 use crate::kind::*;
 use crate::process::*;
+use crate::table::*;
 use crate::tuple::*;
 use crate::vec_table::*;
 
@@ -13,6 +14,7 @@ pub struct Function {
     pub default_fn: bool,
     pub pos: usize,
     pub arguments: Tuple,
+    pub table: Table,
 }
 
 impl Function {
@@ -21,11 +23,12 @@ impl Function {
             default_fn: default_fn,
             pos: pos,
             arguments: arguments,
+            table: Table::new(),
         }
     }
 
     pub fn run(&self, arguments: &Tuple, process: &Process, vec_table: &mut VecTable) -> Tuple {
-        vec_table.add_level();
+        vec_table.add_level(self.table.clone());
 
         let enumerate = self.arguments.len() > 0 && {
             let name = get_real_name(self.arguments.get_name(self.arguments.len() - 1));
@@ -116,6 +119,7 @@ impl Clone for Function {
             default_fn: self.default_fn,
             pos: self.pos,
             arguments: self.arguments.clone(),
+            table: self.table.clone()
         }
     }
 }

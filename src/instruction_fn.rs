@@ -20,11 +20,30 @@ pub fn assign(
     let real_name = get_real_name(name_a);
 
     match var_b.kind {
-        Kind::String => vec_table.set_string(real_name, var_b.get_string(name_b, table).unwrap()),
-        Kind::Number => vec_table.set_number(real_name, var_b.get_number(name_b, table).unwrap()),
-        Kind::BigInt => vec_table.set_bigint(real_name, var_b.get_bigint(name_b, table).unwrap()),
-        Kind::Bool => vec_table.set_bool(real_name, var_b.get_bool(name_b, table).unwrap()),
-        Kind::Null => vec_table.set_null(real_name),
+        Kind::String => {
+            let value = var_b.get_string(name_b, table).unwrap();
+            vec_table.set_string(real_name, value.clone());
+            table.set_string(name_a, value);
+        }
+        Kind::Number => {
+            let value = var_b.get_number(name_b, table).unwrap();
+            vec_table.set_number(real_name, value);
+            table.set_number(name_a, value);
+        }
+        Kind::BigInt => {
+            let value = var_b.get_bigint(name_b, table).unwrap();
+            vec_table.set_bigint(real_name, value.clone());
+            table.set_bigint(name_a, value);
+        }
+        Kind::Bool => {
+            let value = var_b.get_bool(name_b, table).unwrap();
+            vec_table.set_bool(real_name, value);
+            table.set_bool(name_a, value);
+        }
+        Kind::Null => {
+            vec_table.set_null(real_name);
+            table.set_null(name_a, true);
+        }
         Kind::Tuple => {
             let pre = vec_table.get(real_name);
             let mut modify = var_a.kind == Kind::Tuple
@@ -65,7 +84,9 @@ pub fn assign(
                     assign(vart_a, vart_b, namet_a, namet_b, tablet_b, vec_table);
                 }
             } else {
-                vec_table.set_tuple(real_name, var_b.get_tuple(name_b, table).unwrap());
+                let value = var_b.get_tuple(name_b, table).unwrap();
+                vec_table.set_tuple(real_name, value.clone());
+                table.set_tuple(name_a, value);
             }
         }
         Kind::Operator | Kind::Function => {}

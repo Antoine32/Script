@@ -16,7 +16,7 @@ use crate::{eprint, eprintln};
 pub struct Process {
     pub table: Table,
     pub instructions: Vec<(Intruction, Vec<String>)>,
-    incomplete_function: Vec<usize>,
+    incomplete_function: Vec<(usize, usize, usize)>,
 }
 
 impl Process {
@@ -44,6 +44,8 @@ impl Process {
             let (instruct, names) = &self.instructions[i];
             Self::print_line(instruct, names, &self.table);
         }
+
+        eprintln!("\n---------------------------------------------------------------------\n");
     }
 
     #[cfg(feature = "print")]
@@ -793,7 +795,7 @@ impl Process {
 
                     if operator_position > 0 {
                         name_a = entry_list[operator_position - 1].to_string();
-                        let real_name = get_real_name(&name_b);
+                        let real_name = get_real_name(&name_a);
 
                         match operator {
                             Operator::SetFunction | Operator::UseFunction => {}
@@ -809,9 +811,6 @@ impl Process {
 
                     match operator.get_priority() {
                         P_ASSIGNEMENT => {
-                            // let name_a_buf = get_real_name(&name_a).to_string();
-                            //let name_b_buf = name_b.to_string();
-
                             if operator == Operator::Asign {
                                 self.instructions
                                     .push((Intruction::ASG, vec![name_a, name_b]))
@@ -916,7 +915,11 @@ impl Process {
                                 self.instructions.push((Intruction::END, vec![name_b]))
                             }
                             Operator::End => {
-                                let position = self.incomplete_function.pop().unwrap();
+                                let (position, level, pos) =
+                                    self.incomplete_function.pop().unwrap();
+
+                                vec_table.get_level(level).get_mut_function(pos).table =
+                                    vec_table.remove_level();
 
                                 self.instructions.insert(
                                     position,
@@ -942,19 +945,28 @@ impl Process {
                                 // .push((Intruction::TUP, vec![name_a, name_b]));
                             }
                             Operator::SetFunction => {
-                                self.incomplete_function.push(start_pos);
-
-                                vec_table.set_function(
-                                    get_real_name(&name_a),
-                                    Function::new(
-                                        false,
-                                        self.instructions.len() + self.incomplete_function.len(),
-                                        self.table
-                                            .get(&name_b)
-                                            .get_tuple(&name_b, &self.table)
-                                            .unwrap(),
-                                    ),
+                                let function = Function::new(
+                                    false,
+                                    self.instructions.len() + self.incomplete_function.len() + 1,
+                                    self.table
+                                        .get(&name_b)
+                                        .get_tuple(&name_b, &self.table)
+                                        .unwrap(),
                                 );
+
+                                let pos = vec_table.set_function_specified(
+                                    vec_table.len() - 1,
+                                    get_real_name(&name_a),
+                                    function,
+                                );
+
+                                self.incomplete_function.push((
+                                    start_pos,
+                                    vec_table.len() - 1,
+                                    pos,
+                                ));
+
+                                vec_table.add_level(Table::new());
                             }
                             Operator::UseFunction => self
                                 .instructions
@@ -1005,7 +1017,7 @@ impl Clone for Process {
 
 pub fn get_real_name(name: &str) -> &str {
     match name.find(CHAR_SEP_NAME) {
-        Some(n) => name.get(0..n).unwrap(),
+        Some(n) => name.get(..n).unwrap(),
         None => name,
     }
 }

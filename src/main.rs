@@ -44,12 +44,12 @@ use default_fn::*;
 use function::*;
 use operation::*;
 use process::*;
+use table::*;
 use tuple::*;
 use vec_table::*;
 
 pub const CHAR_SEP_NAME: char = 0 as char;
 pub const CHAR_FUNC: char = 1 as char;
-// format!("{}", CHAR_SEP_NAME).as_str()
 
 /*
    To print debug info use
@@ -284,6 +284,8 @@ pub fn process_text(content: String, vec_table: &mut VecTable) -> Process {
         n += 1;
     }
 
+    eprintln!("\n---------------------------------------------------------------------\n");
+
     return process_lines;
 }
 
@@ -433,6 +435,47 @@ fn main() {
 
     let mut vec_table = VecTable::new();
 
+    {
+        let table = &mut vec_table.get_level(0);
+        table.set_string("path", String::from("test.te"));
+        table.set_number("rep", 1.0);
+    }
+
+    let args: Vec<String> = std::env::args().collect();
+
+    vec_table.add_level(Table::new());
+
+    for i in 1..(args.len()) {
+        eprintln!("\n---------------------------------------------------------------------");
+
+        println!("arg{}: {}", i, args[i]);
+
+        let init = process_text(
+            format!("return {}", args[i].replace("\\", "\\\\")),
+            &mut vec_table,
+        );
+
+        let tuple = init.run(&mut vec_table, 0);
+        let real_name = get_real_name(tuple.get_name(0)).to_string();
+        let name = format!("arg{}", i - 1);
+
+        println!("{}", tuple);
+
+        vec_table.get_level(0).set_tuple(
+            if real_name.len() > 0 {
+                &real_name
+            } else {
+                &name
+            },
+            tuple,
+        );
+
+        #[cfg(feature = "print")]
+        vec_table.print_tables();
+    }
+
+    vec_table.remove_level();
+
     for i in 0..(DEFAULTS_FUNCTIONS.len()) {
         vec_table.set_function(
             DEFAULTS_FUNCTIONS_STR[i],
@@ -440,46 +483,48 @@ fn main() {
         );
     }
 
+    let path;
+    let rep;
+
+    {
+        let table = &mut vec_table.get_level(0);
+        path = table.get("path").get_string("path", table).unwrap();
+        rep = table.get("rep").get_number("rep", table).unwrap().ceil() as usize;
+    }
+
+    eprintln!("Path: {}", path);
+
+    #[cfg(feature = "time")]
+    let mut times: Vec<Duration> = Vec::with_capacity(rep);
+
+    vec_table.add_level(Table::new());
+
     #[cfg(feature = "time")]
     let timer_interpretation = Instant::now();
 
-    let content = readfile("test.te").unwrap();
+    let content = readfile(&path).unwrap();
 
     let process_lines = process_text(content, &mut vec_table);
 
     #[cfg(feature = "time")]
     let time_interpretation = timer_interpretation.elapsed();
 
-    eprintln!("\n---------------------------------------------------------------------\n");
-
     #[cfg(feature = "print")]
     process_lines.print_intructions();
 
-    eprintln!("\n---------------------------------------------------------------------\n");
+    for i in 0..rep {
+        #[cfg(feature = "time")]
+        let timer = Instant::now();
 
-    #[cfg(feature = "time")]
-    let timer_a = Instant::now();
+        process_lines.run(&mut vec_table, 0);
 
-    process_lines.run(&mut vec_table, 0);
+        #[cfg(feature = "time")]
+        times.push(timer.elapsed());
 
-    #[cfg(feature = "time")]
-    let time_a = timer_a.elapsed();
-
-    #[cfg(feature = "time")]
-    let timer_b = Instant::now();
-
-    process_lines.run(&mut vec_table, 0);
-
-    #[cfg(feature = "time")]
-    let time_b = timer_b.elapsed();
-
-    #[cfg(feature = "time")]
-    let timer_c = Instant::now();
-
-    process_lines.run(&mut vec_table, 0);
-
-    #[cfg(feature = "time")]
-    let time_c = timer_c.elapsed();
+        if i < rep - 1 {
+            println!("\n---------------------------------------------------------------------\n");
+        }
+    }
 
     #[cfg(feature = "time")]
     let time_total = timer_interpretation.elapsed();
@@ -489,9 +534,11 @@ fn main() {
         println!("\n----------------- Time taken -----------------\n");
 
         println!("Interpretation Time :\n{}", time_taken(time_interpretation));
-        println!("Execution Time 1 :\n{}", time_taken(time_a));
-        println!("Execution Time 2 :\n{}", time_taken(time_b));
-        println!("Execution Time 3 :\n{}", time_taken(time_c));
+
+        for i in 0..(times.len()) {
+            println!("Execution Time {} :\n{}", i, time_taken(times[i]));
+        }
+
         println!("Total Time :\n{}", time_taken(time_total));
     }
 
