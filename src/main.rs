@@ -308,7 +308,6 @@ fn main() {
     {
         let table = &mut vec_table.get_level(0);
         table.set_string("path", String::from("test.te"));
-        table.set_number("rep", 1.0);
     }
 
     let mut args: Vec<String> = std::env::args().collect();
@@ -361,15 +360,12 @@ fn main() {
     }
 
     let path;
-    let rep;
+    let rep = 1;
 
     {
         let table = &mut vec_table.get_level(0);
         path = table.get("path").get_string("path", table).unwrap();
-        rep = table.get("rep").get_number("rep", table).unwrap().ceil() as usize;
     }
-
-    let rep = 3;
 
     eprintln!("Path: {}", path);
 
