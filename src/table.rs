@@ -46,13 +46,23 @@ impl Table {
         eprintln!("{}{}\t: {}\t: {}\n", start_with, "name", "kind", "value");
 
         for (name, var) in self.variables.iter() {
-            eprintln!(
-                "{}{}\t: {}\t: |{}|",
-                start_with,
-                name,
-                var.kind,
-                var.get_string(name, self).unwrap()
-            );
+            eprint!("{}{}\t: {}", start_with, name, var.kind);
+
+            if var.kind == Kind::Function {
+                let real_name = crate::get_real_name(&name);
+                let function = var.get_function(real_name, self).unwrap();
+
+                eprint!(
+                    " {}",
+                    if function.default_fn {
+                        "df".to_string()
+                    } else {
+                        function.pos.to_string()
+                    }
+                );
+            }
+
+            eprintln!("\t: |{}|", var.get_string(name, self).unwrap());
         }
     }
 
@@ -203,7 +213,7 @@ impl Table {
         }
     }
 
-    pub fn set_function(&mut self, entry: &str, value: Function) {
+    pub fn set_function(&mut self, entry: &str, value: Function) -> usize {
         let pos_a = self.vec_function.add(value.clone());
         let pos_b = self.set(entry, pos_a, Kind::Function);
 
@@ -211,6 +221,8 @@ impl Table {
             self.vec_function.remove(pos_a);
             self.vec_function[pos_b] = value;
         }
+
+        return pos_b;
     }
 
     pub fn set_tuple(&mut self, entry: &str, value: Tuple) {
@@ -299,6 +311,10 @@ impl Table {
 
     pub fn get_mut_bool(&mut self, pos: usize) -> &mut bool {
         &mut self.vec_bool[pos]
+    }
+
+    pub fn get_mut_function(&mut self, pos: usize) -> &mut Function {
+        &mut self.vec_function[pos]
     }
 
     pub fn get_mut_tuple(&mut self, pos: usize) -> &mut Tuple {

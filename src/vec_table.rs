@@ -14,7 +14,7 @@ pub struct VecTable {
 impl VecTable {
     pub fn new() -> Self {
         Self {
-            tables: Vec::from([Table::new(), Table::new()]),
+            tables: Vec::from([Table::new()]),
         }
     }
 
@@ -42,15 +42,15 @@ impl VecTable {
         self.tables.len()
     }
 
-    pub fn add_level(&mut self) {
-        self.tables.push(Table::new());
+    pub fn add_level(&mut self, table: Table) {
+        self.tables.push(table);
     }
 
-    pub fn remove_level(&mut self) {
-        self.tables.pop();
+    pub fn remove_level(&mut self) -> Table {
+        self.tables.pop().unwrap()
     }
 
-    pub fn set_level(&mut self, mut need: usize) {
+    /*pub fn set_level(&mut self, mut need: usize) {
         need += 1;
 
         while need > self.tables.len() {
@@ -60,7 +60,7 @@ impl VecTable {
         while need < self.tables.len() {
             self.remove_level();
         }
-    }
+    }*/
 
     pub fn set_string_specified(&mut self, level: usize, entry: &str, value: String) {
         self.tables[level].set_string(entry, value);
@@ -86,8 +86,8 @@ impl VecTable {
         self.tables[level].set_null(entry, true);
     }
 
-    pub fn set_function_specified(&mut self, level: usize, entry: &str, value: Function) {
-        self.tables[level].set_function(entry, value);
+    pub fn set_function_specified(&mut self, level: usize, entry: &str, value: Function) -> usize {
+        self.tables[level].set_function(entry, value)
     }
 
     pub fn set_string(&mut self, entry: &str, value: String) {
@@ -156,8 +156,16 @@ impl VecTable {
         self.set_null_specified(self.tables.len() - 1, entry);
     }
 
-    pub fn set_function(&mut self, entry: &str, value: Function) {
-        self.set_function_specified(0, entry, value);
+    pub fn set_function(&mut self, entry: &str, value: Function) -> (usize, usize) {
+        for i in (0..(self.tables.len())).rev() {
+            if self.tables[i].contains(entry) {
+                let pos = self.set_function_specified(i, entry, value);
+                return (i, pos);
+            }
+        }
+
+        let pos = self.set_function_specified(self.tables.len() - 1, entry, value);
+        return (self.tables.len() - 1, pos);
     }
 
     pub fn get(&mut self, entry: &str) -> Option<(&mut Table, Variable)> {

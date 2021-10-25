@@ -4,19 +4,10 @@ use std::io::prelude::*;
 use std::io::BufReader;
 
 #[cfg(feature = "time")]
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
-#[cfg(feature = "monitor")]
-use websocket::sync::Server;
-
-#[cfg(feature = "monitor")]
-use websocket::Message;
-
-#[cfg(feature = "monitor")]
-use std::{sync::mpsc::sync_channel, thread};
-
-#[cfg(feature = "monitor")]
-use sysinfo::{ProcessExt, SystemExt};
+#[cfg(feature = "time")]
+use std::time::Duration;
 
 #[cfg(target_family = "unix")]
 use termion::input::TermRead;
@@ -26,6 +17,7 @@ use termion::raw::IntoRawMode;
 
 mod default_fn;
 mod function;
+mod function_kind;
 mod instruction;
 mod instruction_fn;
 mod kind;
@@ -41,12 +33,12 @@ use default_fn::*;
 use function::*;
 use operation::*;
 use process::*;
+use table::*;
 use tuple::*;
 use vec_table::*;
 
 pub const CHAR_SEP_NAME: char = 0 as char;
 pub const CHAR_FUNC: char = 1 as char;
-// format!("{}", CHAR_SEP_NAME).as_str()
 
 /*
    To print debug info use
@@ -170,7 +162,10 @@ pub fn quicksort<E: Ord>(arr: &mut [E]) {
     }
 }
 
-pub fn bigint_pow(mut a: BigInt, mut b: BigInt) -> BigInt {
+pub fn bigint_pow(a: &BigInt, b: &BigInt) -> BigInt {
+    let mut a = a.clone();
+    let mut b = b.clone();
+
     let mut c = BigInt::one();
     let mut factor = BigInt::one();
 
@@ -263,10 +258,9 @@ pub fn decode_string(string: &str) -> String {
 
 pub fn process_text(content: String, vec_table: &mut VecTable) -> Process {
     let mut lines: Vec<String> = content
-        .replace(";\n", "\n")
-        .replace(";", "\n")
         .rsplit(|c: char| c == '\n' || c == ';')
-        .filter(|c| c.len() > 0)
+        .filter(|s| s.len() > 0)
+        .map(|s| s.trim_end_matches(';'))
         .map(|s| s.to_string())
         .collect();
 
@@ -280,6 +274,8 @@ pub fn process_text(content: String, vec_table: &mut VecTable) -> Process {
 
         n += 1;
     }
+
+    eprintln!("\n---------------------------------------------------------------------\n");
 
     return process_lines;
 }
@@ -306,125 +302,55 @@ fn time_taken(elapsed: Duration) -> String {
     return string;
 }
 
-#[cfg(feature = "monitor")]
-fn thread_memory() -> (
-    std::sync::mpsc::Receiver<String>,
-    std::sync::mpsc::SyncSender<bool>,
-) {
-    let pid = std::process::id() as usize;
+fn main() {
+    let mut vec_table = VecTable::new();
 
-    let (sender_thread, receiver_ext) = sync_channel(2);
-    let (sender_ext, receiver_thread) = sync_channel(2);
-
-    let mut senders: Vec<std::sync::mpsc::SyncSender<json::JsonValue>> = Vec::new();
-
-    let server = Server::bind("127.0.0.1:8889").unwrap();
-
-    println!("connect monitor program");
-
-    for connection in server.filter_map(Result::ok) {
-        let (sender_thread_net, receiver_net): (
-            std::sync::mpsc::SyncSender<json::JsonValue>,
-            std::sync::mpsc::Receiver<json::JsonValue>,
-        ) = sync_channel(2);
-
-        senders.push(sender_thread_net);
-
-        thread::spawn(move || {
-            let mut client = connection.accept().unwrap();
-
-            loop {
-                let data = receiver_net.recv().unwrap();
-                let message = Message::text(data.to_string());
-                client.send_message(&message).unwrap();
-
-                if data["memory"] == 0 {
-                    break;
-                }
-            }
-        });
-
-        break;
+    {
+        let table = &mut vec_table.get_level(0);
+        table.set_string("path", String::from("test.te"));
     }
 
-    thread::spawn(move || {
-        let mut system = sysinfo::System::new_all();
-        system.refresh_all();
+    let mut args: Vec<String> = std::env::args().collect();
 
-        sender_thread.send(String::new()).unwrap(); // doesn't run the thread and the program at the same time without it, idk why...
+    vec_table.add_level(Table::new());
 
-        let mut max_use = 0;
+    for i in 1..(args.len()) {
+        eprintln!("\n---------------------------------------------------------------------");
 
-        let mut last = Instant::now();
+        if args[i].parse::<BigInt>().is_err()
+            && args[i].parse::<f64>().is_err()
+            && args[i].parse::<bool>().is_err()
+        {
+            args[i] = format!("\"{}\"", args[i]);
+        }
 
-        let mut data = json::JsonValue::new_object();
-        data["memory"] = 1.into();
-        data["cpu"] = 0.into();
-        data["read"] = 0.into();
-        data["write"] = 0.into();
+        eprintln!("arg{}: {}", i - 1, args[i]);
 
-        let mut count = 1.0;
+        let init = process_text(
+            format!("return {}", args[i].replace("\\", "\\\\")),
+            &mut vec_table,
+        );
 
-        while receiver_thread.try_recv().is_err() {
-            system.refresh_all();
-            system.refresh_disks();
-            system.refresh_process(pid);
+        let tuple = init.run(&mut vec_table, 0);
+        let real_name = get_real_name(tuple.get_name(0)).to_string();
+        let name = format!("arg{}", i - 1);
 
-            let process = system.get_process(pid).unwrap();
+        eprintln!("{}", tuple);
 
-            let memory = process.memory();
-            let cpu = process.cpu_usage();
-            let disk = process.disk_usage();
-
-            if memory > 0 {
-                data["memory"] = memory.into();
-            }
-
-            if cpu > 0.0 {
-                data["cpu"] = isize::min(((cpu / count) * 1.0) as isize, 100).into();
-                count = 1.0;
+        vec_table.get_level(0).set_tuple(
+            if real_name.len() > 0 {
+                &real_name
             } else {
-                count += 1.0;
-            }
+                &name
+            },
+            tuple,
+        );
 
-            data["read"] = disk.read_bytes.into();
-            data["write"] = disk.written_bytes.into();
+        #[cfg(feature = "print")]
+        vec_table.print_tables();
+    }
 
-            if last.elapsed().as_millis() >= 50 || max_use == 0 {
-                for sender in senders.iter() {
-                    sender.send(data.clone()).unwrap();
-                }
-
-                last = Instant::now()
-            }
-
-            if memory > max_use {
-                max_use = memory;
-            }
-        }
-
-        data["memory"] = 0.into();
-        data["cpu"] = 0.into();
-        data["read"] = 0.into();
-        data["write"] = 0.into();
-
-        for sender in senders.iter() {
-            sender.send(data.clone()).unwrap();
-        }
-
-        sender_thread.send(format!("Max: {} KB", max_use)).unwrap();
-    });
-
-    receiver_ext.recv().unwrap(); // doesn't run the thread and the program at the same time without it, idk why...
-
-    return (receiver_ext, sender_ext);
-}
-
-fn main() {
-    #[cfg(feature = "monitor")]
-    let (receiver, sender) = thread_memory();
-
-    let mut vec_table = VecTable::new();
+    vec_table.remove_level();
 
     for i in 0..(DEFAULTS_FUNCTIONS.len()) {
         vec_table.set_function(
@@ -433,53 +359,62 @@ fn main() {
         );
     }
 
-    #[cfg(feature = "time")]
-    let timer_a = Instant::now();
+    let path;
+    let rep = 1;
 
-    let content = readfile("test.te").unwrap();
+    {
+        let table = &mut vec_table.get_level(0);
+        path = table.get("path").get_string("path", table).unwrap();
+    }
+
+    eprintln!("Path: {}", path);
+
+    #[cfg(feature = "time")]
+    let mut times: Vec<Duration> = Vec::with_capacity(rep);
+
+    vec_table.add_level(Table::new());
+
+    #[cfg(feature = "time")]
+    let timer_interpretation = Instant::now();
+
+    let content = readfile(&path).unwrap();
 
     let process_lines = process_text(content, &mut vec_table);
 
     #[cfg(feature = "time")]
-    let time_a = timer_a.elapsed();
-
-    eprintln!("\n---------------------------------------------------------------------\n");
+    let time_interpretation = timer_interpretation.elapsed();
 
     #[cfg(feature = "print")]
     process_lines.print_intructions();
 
-    eprintln!("\n---------------------------------------------------------------------\n");
+    for i in 0..rep {
+        #[cfg(feature = "time")]
+        let timer = Instant::now();
+
+        process_lines.run(&mut vec_table, 0);
+
+        #[cfg(feature = "time")]
+        times.push(timer.elapsed());
+
+        if i < rep - 1 {
+            println!("\n---------------------------------------------------------------------\n");
+        }
+    }
 
     #[cfg(feature = "time")]
-    let timer_b = Instant::now();
-
-    process_lines.run(&mut vec_table, 0);
-
-    #[cfg(feature = "time")]
-    let time_b = timer_b.elapsed();
-
-    #[cfg(feature = "time")]
-    let time_c = timer_a.elapsed();
+    let time_total = timer_interpretation.elapsed();
 
     #[cfg(feature = "time")]
     {
         println!("\n----------------- Time taken -----------------\n");
 
-        println!("Interpretation Time :\n{}", time_taken(time_a));
-        println!("Execution Time :\n{}", time_taken(time_b));
-        println!("Total Time :\n{}", time_taken(time_c));
-    }
+        println!("Interpretation Time :\n{}", time_taken(time_interpretation));
 
-    #[cfg(feature = "monitor")]
-    {
-        println!("\n---------------- Memory usage ----------------\n");
+        for i in 0..(times.len()) {
+            println!("Execution Time {} :\n{}", i, time_taken(times[i]));
+        }
 
-        sender.send(false).unwrap();
-
-        println!("{}", receiver.recv().unwrap());
-
-        //println!("memory usage A: {} KB", mem_a);
-        //println!("memory usage B: {} KB", mem_b);
+        println!("Total Time :\n{}", time_taken(time_total));
     }
 
     #[cfg(feature = "pause")]

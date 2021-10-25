@@ -1,7 +1,7 @@
 #[allow(unused_imports)]
 use crate::{eprint, eprintln};
 
-pub const OPERATORS: [Operator; 35] = [
+pub const OPERATORS: [Operator; 45] = [
     Operator::PowAsign,
     Operator::AddAsign,
     Operator::SubAsign,
@@ -37,6 +37,16 @@ pub const OPERATORS: [Operator; 35] = [
     Operator::End,
     Operator::SetFunction,
     Operator::UseFunction,
+    Operator::If,
+    Operator::Else,
+    Operator::Elif,
+    Operator::Loop,
+    Operator::While,
+    Operator::For,
+    Operator::Match,
+    Operator::Break,
+    Operator::Continue,
+    Operator::Stop,
 ];
 
 pub const OPERATORS_STR: [&str; OPERATORS.len()] = [
@@ -75,6 +85,16 @@ pub const OPERATORS_STR: [&str; OPERATORS.len()] = [
     OPERATORS[32].get_str(),
     OPERATORS[33].get_str(),
     OPERATORS[34].get_str(),
+    OPERATORS[35].get_str(),
+    OPERATORS[36].get_str(),
+    OPERATORS[37].get_str(),
+    OPERATORS[38].get_str(),
+    OPERATORS[39].get_str(),
+    OPERATORS[40].get_str(),
+    OPERATORS[41].get_str(),
+    OPERATORS[42].get_str(),
+    OPERATORS[43].get_str(),
+    OPERATORS[44].get_str(),
 ];
 
 pub enum Operator {
@@ -113,25 +133,36 @@ pub enum Operator {
     End,
     SetFunction,
     UseFunction,
+    If,
+    Else,
+    Elif,
+    Loop,
+    While,
+    For,
+    Match,
+    Break,
+    Continue,
+    Stop,
 }
 
 // Priority
-pub const P_USE_FUNCTION: usize = 13;
-pub const P_NOT: usize = 12; // !
-pub const P_POW: usize = 11; // **
-pub const P_MUL_DIV_MOD: usize = 10; // * / %
-pub const P_ADD_SUB: usize = 9; // + -
-pub const P_BIT_AND: usize = 8; // &
-pub const P_XOR: usize = 7; // ^
-pub const P_BIT_OR: usize = 6; // |
-pub const P_COMPARAISON: usize = 5; // == != < > <= >=
-pub const P_AND: usize = 4; // &&
-pub const P_OR: usize = 3; // ||
-pub const P_SEPARATOR: usize = 2;
-pub const P_ASSIGNEMENT: usize = 1; // = += -= *= /= %= &= |= ^= **=
+pub const P_USE_FUNCTION: usize = 14;
+pub const P_NOT: usize = 13; // !
+pub const P_POW: usize = 12; // **
+pub const P_MUL_DIV_MOD: usize = 11; // * / %
+pub const P_ADD_SUB: usize = 10; // + -
+pub const P_BIT_AND: usize = 9; // &
+pub const P_XOR: usize = 8; // ^
+pub const P_BIT_OR: usize = 7; // |
+pub const P_COMPARAISON: usize = 6; // == != < > <= >=
+pub const P_AND: usize = 5; // &&
+pub const P_OR: usize = 4; // ||
+pub const P_SEPARATOR: usize = 3;
+pub const P_ASSIGNEMENT: usize = 2; // = += -= *= /= %= &= |= ^= **=
+pub const P_CONDITION: usize = 1; // if else
 pub const P_RETURN_FUNCTION: usize = 0; // return
 
-pub const LEVELS_OF_PRIORITY: usize = 14;
+pub const LEVELS_OF_PRIORITY: usize = 15;
 
 impl Operator {
     pub fn from_string(string: &str) -> Option<Self> {
@@ -181,6 +212,16 @@ impl Operator {
             Self::End => P_RETURN_FUNCTION,
             Self::SetFunction => P_RETURN_FUNCTION,
             Self::UseFunction => P_USE_FUNCTION,
+            Self::If => P_CONDITION,
+            Self::Else => P_CONDITION,
+            Self::Elif => P_CONDITION,
+            Self::Loop => P_CONDITION,
+            Self::While => P_CONDITION,
+            Self::For => P_CONDITION,
+            Self::Match => P_CONDITION,
+            Self::Break => P_RETURN_FUNCTION,
+            Self::Continue => P_RETURN_FUNCTION,
+            Self::Stop => P_RETURN_FUNCTION,
         }
     }
 
@@ -221,6 +262,16 @@ impl Operator {
             Self::End => "end",
             Self::SetFunction => "fn",
             Self::UseFunction => "☺",
+            Self::If => "if",
+            Self::Else => "else",
+            Self::Elif => "elif",
+            Self::Loop => "loop",
+            Self::While => "while",
+            Self::For => "for",
+            Self::Match => "match",
+            Self::Break => "break",
+            Self::Continue => "continue",
+            Self::Stop => "stop",
         }
     }
 
@@ -279,6 +330,16 @@ impl std::cmp::PartialEq for Operator {
             Self::End => matches!(other, Self::End),
             Self::SetFunction => matches!(other, Self::SetFunction),
             Self::UseFunction => matches!(other, Self::UseFunction),
+            Self::If => matches!(other, Self::If),
+            Self::Else => matches!(other, Self::Else),
+            Self::Elif => matches!(other, Self::Elif),
+            Self::Loop => matches!(other, Self::Loop),
+            Self::While => matches!(other, Self::While),
+            Self::For => matches!(other, Self::For),
+            Self::Match => matches!(other, Self::Match),
+            Self::Break => matches!(other, Self::Break),
+            Self::Continue => matches!(other, Self::Continue),
+            Self::Stop => matches!(other, Self::Stop),
         }
     }
 }
@@ -321,6 +382,16 @@ impl Clone for Operator {
             Self::End => Self::End,
             Self::SetFunction => Self::SetFunction,
             Self::UseFunction => Self::UseFunction,
+            Self::If => Self::If,
+            Self::Else => Self::Else,
+            Self::Elif => Self::Elif,
+            Self::Loop => Self::Loop,
+            Self::While => Self::While,
+            Self::For => Self::For,
+            Self::Match => Self::Match,
+            Self::Break => Self::Break,
+            Self::Continue => Self::Continue,
+            Self::Stop => Self::Stop,
         }
     }
 }
