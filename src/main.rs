@@ -307,7 +307,7 @@ fn main() {
 
     {
         let table = &mut vec_table.get_level(0);
-        table.set_string("path", String::from("test.te"));
+        table.set_string("path", String::from("test/test.te"));
     }
 
     let mut args: Vec<String> = std::env::args().collect();

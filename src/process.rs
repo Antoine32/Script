@@ -1026,6 +1026,33 @@ impl Process {
                                         let mut position_loop: usize;
                                         let mut count_loop: usize;
 
+                                        // pos is an identifier here
+                                        match pos {
+                                            1 => {
+                                                // while
+                                                self.instructions.insert(
+                                                    position,
+                                                    (
+                                                        Instruction::GOTO,
+                                                        vec![usize_to_string(
+                                                            (self.instructions.len() as isize
+                                                                + self.incomplete_function.len()
+                                                                    as isize
+                                                                + 4
+                                                                + self.incomplete_loop.len()
+                                                                    as isize
+                                                                - self.loop_counter.len() as isize)
+                                                                as usize,
+                                                        )],
+                                                    ),
+                                                );
+                                            }
+                                            _ => {}
+                                        }
+
+                                        // level is operation_count here
+                                        position -= level;
+
                                         while self.incomplete_loop.len() > 0 {
                                             let a = self.incomplete_loop.pop().unwrap();
                                             position_loop = a.0;
@@ -1082,8 +1109,10 @@ impl Process {
                                             (
                                                 Instruction::GOTO,
                                                 vec![usize_to_string(
-                                                    position + self.incomplete_function.len()
-                                                        - self.loop_counter.len(),
+                                                    ((position + self.incomplete_function.len())
+                                                        as isize
+                                                        - (self.loop_counter.len()) as isize)
+                                                        as usize,
                                                 )],
                                             ),
                                         );
@@ -1142,6 +1171,7 @@ impl Process {
                                     (Instruction::UPLV, Vec::new()),
                                 );
                                 vec_table.add_level(Table::new());
+
                                 self.instructions.push((Instruction::COND, vec![name_b]));
 
                                 self.incomplete_function.push((
@@ -1217,8 +1247,8 @@ impl Process {
 
                                 self.incomplete_function.push((
                                     self.instructions.len(),
-                                    vec_table.len() - 1,
-                                    1,
+                                    0, // operation_count
+                                    0, // stay 0, identifier
                                     FunctionKind::Loop,
                                 ));
 
@@ -1226,7 +1256,26 @@ impl Process {
 
                                 delete = (false, false);
                             }
-                            Operator::While => {}
+                            Operator::While => {
+                                self.instructions.insert(
+                                    self.instructions.len() - operation_count,
+                                    (Instruction::UPLV, Vec::new()),
+                                );
+                                vec_table.add_level(Table::new());
+
+                                self.instructions.push((Instruction::COND, vec![name_b]));
+
+                                self.incomplete_function.push((
+                                    self.instructions.len(),
+                                    operation_count + 1,
+                                    1, // stay 1, identifier
+                                    FunctionKind::Loop,
+                                ));
+
+                                self.loop_counter.push(0);
+
+                                delete = (false, false);
+                            }
                             Operator::For => {}
                             Operator::Match => {}
                             Operator::Break => {
