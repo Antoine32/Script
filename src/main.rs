@@ -3,23 +3,11 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
 
-#[cfg(any(feature = "monitor", feature = "memory", feature = "time"))]
+#[cfg(feature = "time")]
 use std::time::Instant;
 
 #[cfg(feature = "time")]
 use std::time::Duration;
-
-#[cfg(feature = "monitor")]
-use websocket::sync::Server;
-
-#[cfg(feature = "monitor")]
-use websocket::Message;
-
-#[cfg(any(feature = "monitor", feature = "memory"))]
-use std::{sync::mpsc::sync_channel, thread};
-
-#[cfg(any(feature = "monitor", feature = "memory"))]
-use sysinfo::{ProcessExt, SystemExt};
 
 #[cfg(target_family = "unix")]
 use termion::input::TermRead;
@@ -29,6 +17,7 @@ use termion::raw::IntoRawMode;
 
 mod default_fn;
 mod function;
+mod function_kind;
 mod instruction;
 mod instruction_fn;
 mod kind;
@@ -173,7 +162,10 @@ pub fn quicksort<E: Ord>(arr: &mut [E]) {
     }
 }
 
-pub fn bigint_pow(mut a: BigInt, mut b: BigInt) -> BigInt {
+pub fn bigint_pow(a: &BigInt, b: &BigInt) -> BigInt {
+    let mut a = a.clone();
+    let mut b = b.clone();
+
     let mut c = BigInt::one();
     let mut factor = BigInt::one();
 
@@ -266,10 +258,9 @@ pub fn decode_string(string: &str) -> String {
 
 pub fn process_text(content: String, vec_table: &mut VecTable) -> Process {
     let mut lines: Vec<String> = content
-        .replace(";\n", "\n")
-        .replace(";", "\n")
         .rsplit(|c: char| c == '\n' || c == ';')
-        .filter(|c| c.len() > 0)
+        .filter(|s| s.len() > 0)
+        .map(|s| s.trim_end_matches(';'))
         .map(|s| s.to_string())
         .collect();
 
@@ -311,128 +302,7 @@ fn time_taken(elapsed: Duration) -> String {
     return string;
 }
 
-#[cfg(any(feature = "monitor", feature = "memory"))]
-fn thread_memory() -> (
-    std::sync::mpsc::Receiver<String>,
-    std::sync::mpsc::SyncSender<bool>,
-) {
-    let pid = std::process::id() as usize;
-
-    let (sender_thread, receiver_ext) = sync_channel(2);
-    let (sender_ext, receiver_thread) = sync_channel(2);
-
-    #[allow(unused_mut)]
-    let mut senders: Vec<std::sync::mpsc::SyncSender<json::JsonValue>> = Vec::new();
-
-    #[cfg(feature = "monitor")]
-    {
-        let server = Server::bind("127.0.0.1:8889").unwrap();
-
-        println!("connect monitor program");
-
-        for connection in server.filter_map(Result::ok) {
-            let (sender_thread_net, receiver_net): (
-                std::sync::mpsc::SyncSender<json::JsonValue>,
-                std::sync::mpsc::Receiver<json::JsonValue>,
-            ) = sync_channel(2);
-
-            senders.push(sender_thread_net);
-
-            thread::spawn(move || {
-                let mut client = connection.accept().unwrap();
-
-                loop {
-                    let data = receiver_net.recv().unwrap();
-                    let message = Message::text(data.to_string());
-                    client.send_message(&message).unwrap();
-
-                    if data["memory"] == 0 {
-                        break;
-                    }
-                }
-            });
-
-            break;
-        }
-    }
-
-    thread::spawn(move || {
-        let mut system = sysinfo::System::new_all();
-        system.refresh_all();
-
-        sender_thread.send(String::new()).unwrap(); // doesn't run the thread and the program at the same time without it, idk why...
-
-        let mut max_use = 0;
-
-        let mut last = Instant::now();
-
-        let mut data = json::JsonValue::new_object();
-        data["memory"] = 1.into();
-        data["cpu"] = 0.into();
-        data["read"] = 0.into();
-        data["write"] = 0.into();
-
-        let mut count = 1.0;
-
-        while receiver_thread.try_recv().is_err() {
-            system.refresh_all();
-            system.refresh_disks();
-            system.refresh_process(pid);
-
-            let process = system.get_process(pid).unwrap();
-
-            let memory = process.memory();
-            let cpu = process.cpu_usage();
-            let disk = process.disk_usage();
-
-            if memory > 0 {
-                data["memory"] = memory.into();
-            }
-
-            if cpu > 0.0 {
-                data["cpu"] = isize::min(((cpu / count) * 1.0) as isize, 100).into();
-                count = 1.0;
-            } else {
-                count += 1.0;
-            }
-
-            data["read"] = disk.read_bytes.into();
-            data["write"] = disk.written_bytes.into();
-
-            if last.elapsed().as_millis() >= 50 || max_use == 0 {
-                for sender in senders.iter() {
-                    sender.send(data.clone()).unwrap();
-                }
-
-                last = Instant::now()
-            }
-
-            if memory > max_use {
-                max_use = memory;
-            }
-        }
-
-        data["memory"] = 0.into();
-        data["cpu"] = 0.into();
-        data["read"] = 0.into();
-        data["write"] = 0.into();
-
-        for sender in senders.iter() {
-            sender.send(data.clone()).unwrap();
-        }
-
-        sender_thread.send(format!("Max: {} KB", max_use)).unwrap();
-    });
-
-    receiver_ext.recv().unwrap(); // doesn't run the thread and the program at the same time without it, idk why...
-
-    return (receiver_ext, sender_ext);
-}
-
 fn main() {
-    #[cfg(any(feature = "monitor", feature = "memory"))]
-    let (receiver, sender) = thread_memory();
-
     let mut vec_table = VecTable::new();
 
     {
@@ -441,14 +311,21 @@ fn main() {
         table.set_number("rep", 1.0);
     }
 
-    let args: Vec<String> = std::env::args().collect();
+    let mut args: Vec<String> = std::env::args().collect();
 
     vec_table.add_level(Table::new());
 
     for i in 1..(args.len()) {
         eprintln!("\n---------------------------------------------------------------------");
 
-        println!("arg{}: {}", i, args[i]);
+        if args[i].parse::<BigInt>().is_err()
+            && args[i].parse::<f64>().is_err()
+            && args[i].parse::<bool>().is_err()
+        {
+            args[i] = format!("\"{}\"", args[i]);
+        }
+
+        eprintln!("arg{}: {}", i - 1, args[i]);
 
         let init = process_text(
             format!("return {}", args[i].replace("\\", "\\\\")),
@@ -459,7 +336,7 @@ fn main() {
         let real_name = get_real_name(tuple.get_name(0)).to_string();
         let name = format!("arg{}", i - 1);
 
-        println!("{}", tuple);
+        eprintln!("{}", tuple);
 
         vec_table.get_level(0).set_tuple(
             if real_name.len() > 0 {
@@ -491,6 +368,8 @@ fn main() {
         path = table.get("path").get_string("path", table).unwrap();
         rep = table.get("rep").get_number("rep", table).unwrap().ceil() as usize;
     }
+
+    let rep = 3;
 
     eprintln!("Path: {}", path);
 
@@ -540,18 +419,6 @@ fn main() {
         }
 
         println!("Total Time :\n{}", time_taken(time_total));
-    }
-
-    #[cfg(any(feature = "monitor", feature = "memory"))]
-    {
-        println!("\n---------------- Memory usage ----------------\n");
-
-        sender.send(false).unwrap();
-
-        println!("{}", receiver.recv().unwrap());
-
-        //println!("memory usage A: {} KB", mem_a);
-        //println!("memory usage B: {} KB", mem_b);
     }
 
     #[cfg(feature = "pause")]

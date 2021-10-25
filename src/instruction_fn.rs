@@ -211,8 +211,8 @@ pub fn power(var_a: &Variable, var_b: &Variable, name_a: &str, name_b: &str, tab
         table.set_bigint(
             name_a,
             bigint_pow(
-                var_a.get_bigint(name_a, table).unwrap(),
-                var_b.get_bigint(name_b, table).unwrap(),
+                &var_a.get_bigint(name_a, table).unwrap(),
+                &var_b.get_bigint(name_b, table).unwrap(),
             ),
         )
     } else {
@@ -274,7 +274,19 @@ fn local_equal(
     name_b: &str,
     table: &mut Table,
 ) -> bool {
-    let mut equality = var_a.kind == var_b.kind;
+    let mut equality = {
+        if var_a.kind == var_b.kind {
+            true
+        } else if var_a.kind == Kind::Number && var_b.kind == Kind::BigInt {
+            let a = var_a.get_number(name_a, table).unwrap();
+            a == a.round()
+        } else if var_a.kind == Kind::BigInt && var_b.kind == Kind::Number {
+            let b = var_b.get_number(name_b, table).unwrap();
+            b == b.round()
+        } else {
+            false
+        }
+    };
 
     if equality {
         equality = match var_a.kind {

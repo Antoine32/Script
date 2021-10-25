@@ -8,15 +8,18 @@ use crate::tuple::*;
 use crate::variable::*;
 use crate::vec_table::*;
 use crate::CHAR_SEP_NAME;
-use crate::{string_to_usize, usize_to_string};
+use crate::{function_kind::FunctionKind, string_to_usize, usize_to_string};
 
 #[allow(unused_imports)]
 use crate::{eprint, eprintln};
 
 pub struct Process {
     pub table: Table,
-    pub instructions: Vec<(Intruction, Vec<String>)>,
-    incomplete_function: Vec<(usize, usize, usize)>,
+    pub instructions: Vec<(Instruction, Vec<String>)>,
+    incomplete_function: Vec<(usize, usize, usize, FunctionKind)>,
+    incomplete_loop: Vec<(usize, usize, usize)>,
+    tables: Vec<Table>,
+    loop_counter: Vec<usize>,
 }
 
 impl Process {
@@ -25,6 +28,9 @@ impl Process {
             table: Table::new(),
             instructions: Vec::new(),
             incomplete_function: Vec::new(),
+            incomplete_loop: Vec::new(),
+            tables: Vec::new(),
+            loop_counter: Vec::new(),
         }
     }
 
@@ -49,7 +55,7 @@ impl Process {
     }
 
     #[cfg(feature = "print")]
-    pub fn print_line(instuction: &Intruction, names: &Vec<String>, table: &Table) {
+    pub fn print_line(instuction: &Instruction, names: &Vec<String>, table: &Table) {
         eprint!("{}\t", instuction);
 
         for name in names.iter() {
@@ -64,8 +70,9 @@ impl Process {
         mut line: String,
         line_num: &mut usize,
         vec_table: &mut VecTable,
-    ) -> String {
+    ) -> (String, usize) {
         let start_pos = self.instructions.len();
+        let mut operation_count = 0;
         let mut at = 0;
 
         {
@@ -173,11 +180,14 @@ impl Process {
             }
 
             if count_dec == count_inc && count_inc > 0 {
-                let mut name = self.from(
+                let buf = self.from(
                     line.get((pos_inc + 1)..pos_dec).unwrap().to_string(),
                     line_num,
                     vec_table,
                 );
+
+                let mut name = buf.0;
+                operation_count += buf.1;
 
                 let real_name = get_real_name(&name);
 
@@ -472,13 +482,18 @@ impl Process {
         }
 
         let mut name = String::new();
+        let mut find = true;
 
         for p in entry_list.iter() {
             let var = table.get(p);
 
-            if var.kind != Kind::Operator {
+            if var.kind == Kind::Operator {
+                if var.get_operator("").unwrap() != Operator::SeparatorTuple {
+                    operation_count += 1;
+                }
+            } else if find {
+                find = false;
                 name = p.clone();
-                break;
             }
         }
 
@@ -488,6 +503,7 @@ impl Process {
             &mut operator_order,
             vec_table,
             start_pos,
+            operation_count - 1, // -1 because of if and elif being operation
         );
 
         table.clear_operator();
@@ -495,7 +511,7 @@ impl Process {
 
         self.table.merge(table);
 
-        return name;
+        return (name, operation_count);
     }
 
     #[cfg(feature = "print")]
@@ -597,7 +613,7 @@ impl Process {
             Self::print_line(&instruction, &names, &this.table);
 
             match instruction {
-                Intruction::ASG => {
+                Instruction::ASG => {
                     assign(
                         &vars[0],
                         &vars[1],
@@ -607,61 +623,66 @@ impl Process {
                         vec_table,
                     );
                 }
-                Intruction::NOT => {
+                Instruction::NOT => {
                     this.table.set_bool(
                         &names[0],
                         !vars[0].get_bool(&names[0], &this.table).unwrap(),
                     );
                 }
-                Intruction::ADD => {
+                Instruction::ADD => {
                     addition(&vars[0], &vars[1], &names[0], &names[1], &mut this.table)
                 }
-                Intruction::SUB => {
+                Instruction::SUB => {
                     substraction(&vars[0], &vars[1], &names[0], &names[1], &mut this.table)
                 }
-                Intruction::MUL => {
+                Instruction::MUL => {
                     multiplication(&vars[0], &vars[1], &names[0], &names[1], &mut this.table)
                 }
-                Intruction::DIV => {
+                Instruction::DIV => {
                     division(&vars[0], &vars[1], &names[0], &names[1], &mut this.table)
                 }
-                Intruction::IDIV => {
+                Instruction::IDIV => {
                     integer_division(&vars[0], &vars[1], &names[0], &names[1], &mut this.table)
                 }
-                Intruction::MOD => {
+                Instruction::MOD => {
                     modulo(&vars[0], &vars[1], &names[0], &names[1], &mut this.table)
                 }
-                Intruction::POW => power(&vars[0], &vars[1], &names[0], &names[1], &mut this.table),
-                Intruction::EQU => equal(&vars[0], &vars[1], &names[0], &names[1], &mut this.table),
-                Intruction::NEQU => {
+                Instruction::POW => {
+                    power(&vars[0], &vars[1], &names[0], &names[1], &mut this.table)
+                }
+                Instruction::EQU => {
+                    equal(&vars[0], &vars[1], &names[0], &names[1], &mut this.table)
+                }
+                Instruction::NEQU => {
                     not_equal(&vars[0], &vars[1], &names[0], &names[1], &mut this.table)
                 }
-                Intruction::XOR => {
+                Instruction::XOR => {
                     exclusif_or(&vars[0], &vars[1], &names[0], &names[1], &mut this.table)
                 }
-                Intruction::BAND => {
+                Instruction::BAND => {
                     bit_and(&vars[0], &vars[1], &names[0], &names[1], &mut this.table)
                 }
-                Intruction::BOR => {
+                Instruction::BOR => {
                     bit_or(&vars[0], &vars[1], &names[0], &names[1], &mut this.table)
                 }
-                Intruction::AND => and(&vars[0], &vars[1], &names[0], &names[1], &mut this.table),
-                Intruction::OR => or(&vars[0], &vars[1], &names[0], &names[1], &mut this.table),
-                Intruction::GRE => {
+                Instruction::AND => and(&vars[0], &vars[1], &names[0], &names[1], &mut this.table),
+                Instruction::OR => or(&vars[0], &vars[1], &names[0], &names[1], &mut this.table),
+                Instruction::GRE => {
                     greater(&vars[0], &vars[1], &names[0], &names[1], &mut this.table)
                 }
-                Intruction::LES => less(&vars[0], &vars[1], &names[0], &names[1], &mut this.table),
-                Intruction::EGRE => {
+                Instruction::LES => less(&vars[0], &vars[1], &names[0], &names[1], &mut this.table),
+                Instruction::EGRE => {
                     greater_equal(&vars[0], &vars[1], &names[0], &names[1], &mut this.table)
                 }
-                Intruction::ELES => {
+                Instruction::ELES => {
                     less_equal(&vars[0], &vars[1], &names[0], &names[1], &mut this.table)
                 }
-                Intruction::GOTO => {
+                Instruction::GOTO => {
                     let position = string_to_usize(&names[0]);
                     j = position;
+                    continue; // to not to "j += 1;"
                 }
-                Intruction::GOTOFN => {
+                Instruction::GOTOFN => {
                     let name = &names[0];
                     let real_name = get_real_name(&name);
 
@@ -719,7 +740,7 @@ impl Process {
                         None => {}
                     }
                 }
-                Intruction::END => {
+                Instruction::END => {
                     if names.len() > 1 && this.table.get(&names[0]).kind == Kind::Tuple {
                         return this
                             .table
@@ -733,10 +754,34 @@ impl Process {
                         );
                     }
                 }
-                Intruction::TUP => {
+                Instruction::TUP => {
                     let mut tuple = vars[0].get_tuple(&names[0], &this.table).unwrap();
                     tuple.push(&vars[1], &names[1], &this.table);
                     this.table.set_tuple(&names[0], tuple);
+                }
+                Instruction::COND => {
+                    let ans = vars[0].get_bool(&names[0], &this.table).unwrap();
+                    if ans {
+                        j += 1;
+                    }
+                }
+                Instruction::STOP => {
+                    break;
+                }
+                Instruction::UPLV => {
+                    this.tables.push(this.table.clone());
+                    vec_table.add_level(Table::new());
+                    eprintln!("\nlevel: {}", vec_table.len() - 1);
+                    eprintln!("\n{}\t: {}\t: {}\n", "name", "kind", "value");
+                }
+                Instruction::DROPLV => {
+                    let lvl = string_to_usize(&names[0]);
+                    while vec_table.len() > lvl {
+                        this.table = this.tables.pop().unwrap();
+                        vec_table.remove_level();
+                    }
+                    eprintln!("\nlevel: {}", vec_table.len() - 1);
+                    eprintln!("\n{}\t: {}\t: {}\n", "name", "kind", "value");
                 }
             }
 
@@ -760,9 +805,10 @@ impl Process {
         operator_order: &mut Vec<Vec<usize>>,
         vec_table: &mut VecTable,
         start_pos: usize,
+        operation_count: usize,
     ) {
-        // -> Vec<(Intruction, Vec<String>)>
-        // let mut instructions: Vec<(Intruction, Vec<String>)> = Vec::new();
+        // -> Vec<(Instruction, Vec<String>)>
+        // let mut instructions: Vec<(Instruction, Vec<String>)> = Vec::new();
 
         if operator_order.len() > 0 {
             let mut name_a = String::from(CHAR_SEP_NAME);
@@ -813,127 +859,244 @@ impl Process {
                         P_ASSIGNEMENT => {
                             if operator == Operator::Asign {
                                 self.instructions
-                                    .push((Intruction::ASG, vec![name_a, name_b]))
+                                    .push((Instruction::ASG, vec![name_a, name_b]))
                             } else {
                                 let name_a_buf = name_a.to_string();
 
                                 match operator {
                                     Operator::AddAsign => self
                                         .instructions
-                                        .push((Intruction::ADD, vec![name_a, name_b])),
+                                        .push((Instruction::ADD, vec![name_a, name_b])),
                                     Operator::SubAsign => self
                                         .instructions
-                                        .push((Intruction::SUB, vec![name_a, name_b])),
+                                        .push((Instruction::SUB, vec![name_a, name_b])),
                                     Operator::MulAsign => self
                                         .instructions
-                                        .push((Intruction::MUL, vec![name_a, name_b])),
+                                        .push((Instruction::MUL, vec![name_a, name_b])),
                                     Operator::DivAsign => self
                                         .instructions
-                                        .push((Intruction::DIV, vec![name_a, name_b])),
+                                        .push((Instruction::DIV, vec![name_a, name_b])),
                                     Operator::ModAsign => self
                                         .instructions
-                                        .push((Intruction::MOD, vec![name_a, name_b])),
+                                        .push((Instruction::MOD, vec![name_a, name_b])),
                                     Operator::PowAsign => self
                                         .instructions
-                                        .push((Intruction::POW, vec![name_a, name_b])),
+                                        .push((Instruction::POW, vec![name_a, name_b])),
                                     Operator::BandAsign => self
                                         .instructions
-                                        .push((Intruction::BAND, vec![name_a, name_b])),
+                                        .push((Instruction::BAND, vec![name_a, name_b])),
                                     Operator::XorAsign => self
                                         .instructions
-                                        .push((Intruction::XOR, vec![name_a, name_b])),
+                                        .push((Instruction::XOR, vec![name_a, name_b])),
                                     Operator::BorAsign => self
                                         .instructions
-                                        .push((Intruction::BOR, vec![name_a, name_b])),
+                                        .push((Instruction::BOR, vec![name_a, name_b])),
                                     _ => {}
                                 }
 
                                 self.instructions
-                                    .push((Intruction::ASG, vec![name_a_buf.clone(), name_a_buf]))
+                                    .push((Instruction::ASG, vec![name_a_buf.clone(), name_a_buf]))
                             }
                         }
                         _ => match operator {
                             Operator::Not => {
-                                self.instructions.push((Intruction::NOT, vec![name_b]));
+                                self.instructions.push((Instruction::NOT, vec![name_b]));
                                 delete = (false, false);
                             }
                             Operator::Pow => self
                                 .instructions
-                                .push((Intruction::POW, vec![name_a, name_b])),
+                                .push((Instruction::POW, vec![name_a, name_b])),
                             Operator::Mul => self
                                 .instructions
-                                .push((Intruction::MUL, vec![name_a, name_b])),
+                                .push((Instruction::MUL, vec![name_a, name_b])),
                             Operator::Div => self
                                 .instructions
-                                .push((Intruction::DIV, vec![name_a, name_b])),
+                                .push((Instruction::DIV, vec![name_a, name_b])),
                             Operator::DivInt => self
                                 .instructions
-                                .push((Intruction::IDIV, vec![name_a, name_b])),
+                                .push((Instruction::IDIV, vec![name_a, name_b])),
                             Operator::Mod => self
                                 .instructions
-                                .push((Intruction::MOD, vec![name_a, name_b])),
+                                .push((Instruction::MOD, vec![name_a, name_b])),
                             Operator::Add => self
                                 .instructions
-                                .push((Intruction::ADD, vec![name_a, name_b])),
+                                .push((Instruction::ADD, vec![name_a, name_b])),
                             Operator::Sub => self
                                 .instructions
-                                .push((Intruction::SUB, vec![name_a, name_b])),
+                                .push((Instruction::SUB, vec![name_a, name_b])),
                             Operator::Band => self
                                 .instructions
-                                .push((Intruction::BAND, vec![name_a, name_b])),
+                                .push((Instruction::BAND, vec![name_a, name_b])),
                             Operator::Xor => self
                                 .instructions
-                                .push((Intruction::XOR, vec![name_a, name_b])),
+                                .push((Instruction::XOR, vec![name_a, name_b])),
                             Operator::Bor => self
                                 .instructions
-                                .push((Intruction::BOR, vec![name_a, name_b])),
+                                .push((Instruction::BOR, vec![name_a, name_b])),
                             Operator::Equal => self
                                 .instructions
-                                .push((Intruction::EQU, vec![name_a, name_b])),
+                                .push((Instruction::EQU, vec![name_a, name_b])),
                             Operator::NotEqual => self
                                 .instructions
-                                .push((Intruction::NEQU, vec![name_a, name_b])),
+                                .push((Instruction::NEQU, vec![name_a, name_b])),
                             Operator::GreaterEqual => self
                                 .instructions
-                                .push((Intruction::EGRE, vec![name_a, name_b])),
+                                .push((Instruction::EGRE, vec![name_a, name_b])),
                             Operator::LesserEqual => self
                                 .instructions
-                                .push((Intruction::ELES, vec![name_a, name_b])),
+                                .push((Instruction::ELES, vec![name_a, name_b])),
                             Operator::Greater => self
                                 .instructions
-                                .push((Intruction::GRE, vec![name_a, name_b])),
+                                .push((Instruction::GRE, vec![name_a, name_b])),
                             Operator::Lesser => self
                                 .instructions
-                                .push((Intruction::LES, vec![name_a, name_b])),
+                                .push((Instruction::LES, vec![name_a, name_b])),
                             Operator::And => self
                                 .instructions
-                                .push((Intruction::AND, vec![name_a, name_b])),
+                                .push((Instruction::AND, vec![name_a, name_b])),
                             Operator::Or => self
                                 .instructions
-                                .push((Intruction::OR, vec![name_a, name_b])),
+                                .push((Instruction::OR, vec![name_a, name_b])),
                             Operator::Return => {
-                                self.instructions.push((Intruction::END, vec![name_b]))
+                                self.instructions.push((Instruction::END, vec![name_b]))
                             }
                             Operator::End => {
-                                let (position, level, pos) =
+                                let (mut position, mut level, mut pos, mut function_kind) =
                                     self.incomplete_function.pop().unwrap();
 
-                                vec_table.get_level(level).get_mut_function(pos).table =
-                                    vec_table.remove_level();
+                                match function_kind {
+                                    FunctionKind::Function => {
+                                        vec_table.get_level(level).get_mut_function(pos).table =
+                                            vec_table.remove_level();
 
-                                self.instructions.insert(
-                                    position,
-                                    (
-                                        Intruction::GOTO,
-                                        vec![usize_to_string(
-                                            self.instructions.len()
-                                                + self.incomplete_function.len()
-                                                + 1,
-                                        )],
-                                    ),
-                                );
+                                        self.instructions.insert(
+                                            position + self.loop_counter.len(),
+                                            self.goto_setup(2),
+                                        );
+                                        self.instructions.push((Instruction::END, Vec::new()));
+                                    }
+                                    FunctionKind::Conditinal => {
+                                        loop {
+                                            if function_kind == FunctionKind::Conditinal {
+                                                self.instructions.insert(
+                                                    position,
+                                                    self.goto_setup(
+                                                        1 - self.loop_counter.len() as isize
+                                                            + self.incomplete_loop.len() as isize,
+                                                    ),
+                                                );
 
-                                self.instructions.push((Intruction::END, Vec::new()));
+                                                for i in 0..self.loop_counter.len() {
+                                                    self.loop_counter[i] -= 1;
+                                                }
+
+                                                if pos == 1 {
+                                                    break;
+                                                }
+                                            } else {
+                                                self.incomplete_function.push((
+                                                    position,
+                                                    level,
+                                                    pos,
+                                                    function_kind,
+                                                ));
+
+                                                break;
+                                            }
+
+                                            if self.incomplete_function.len() == 0 {
+                                                break;
+                                            }
+
+                                            let a = self.incomplete_function.pop().unwrap();
+                                            position = a.0;
+                                            level = a.1;
+                                            pos = a.2;
+                                            function_kind = a.3;
+                                        }
+
+                                        vec_table.remove_level();
+                                        self.instructions.push((
+                                            Instruction::DROPLV,
+                                            vec![usize_to_string(vec_table.len())],
+                                        ));
+                                    }
+                                    FunctionKind::Loop => {
+                                        let mut level_loop: usize;
+                                        let mut position_loop: usize;
+                                        let mut count_loop: usize;
+
+                                        while self.incomplete_loop.len() > 0 {
+                                            let a = self.incomplete_loop.pop().unwrap();
+                                            position_loop = a.0;
+                                            level_loop = a.1;
+                                            count_loop = a.2;
+
+                                            if level_loop == self.loop_counter.len() {
+                                                /*let t = format!(
+                                                    "wtf: {}, {}, {}, {}, {}, {}",
+                                                    self.instructions.len(),
+                                                    self.incomplete_function.len(),
+                                                    self.incomplete_loop.len(),
+                                                    self.loop_counter.len(),
+                                                    count_loop,
+                                                    position_loop
+                                                );
+
+                                                println!("\n--------------\n{}\n{}\n", t, t);*/
+
+                                                self.instructions.insert(
+                                                    position_loop + count_loop,
+                                                    (
+                                                        Instruction::GOTO,
+                                                        vec![usize_to_string(
+                                                            (self.instructions.len() as isize
+                                                                + self.incomplete_function.len()
+                                                                    as isize
+                                                                + 4
+                                                                + self.incomplete_loop.len()
+                                                                    as isize
+                                                                - self.loop_counter.len() as isize)
+                                                                as usize,
+                                                        )],
+                                                    ),
+                                                );
+                                            } else {
+                                                self.incomplete_loop.push((
+                                                    position_loop,
+                                                    level_loop,
+                                                    count_loop,
+                                                ));
+                                                break;
+                                            }
+                                        }
+
+                                        vec_table.remove_level();
+                                        self.instructions.push((
+                                            Instruction::DROPLV,
+                                            vec![usize_to_string(vec_table.len())],
+                                        ));
+
+                                        self.instructions.insert(
+                                            self.instructions.len(),
+                                            (
+                                                Instruction::GOTO,
+                                                vec![usize_to_string(
+                                                    position + self.incomplete_function.len()
+                                                        - self.loop_counter.len(),
+                                                )],
+                                            ),
+                                        );
+
+                                        self.loop_counter.pop();
+
+                                        self.instructions.push((
+                                            Instruction::DROPLV,
+                                            vec![usize_to_string(vec_table.len())],
+                                        ));
+                                    }
+                                }
+
                                 delete = (false, false);
                             }
                             Operator::SeparatorTuple => {
@@ -942,7 +1105,7 @@ impl Process {
                                 tuple.push(&table.get(&name_b), &name_b, &table);
                                 table.set_tuple(&name_a, tuple);
                                 //self.instructions
-                                // .push((Intruction::TUP, vec![name_a, name_b]));
+                                // .push((Instruction::TUP, vec![name_a, name_b]));
                             }
                             Operator::SetFunction => {
                                 let function = Function::new(
@@ -964,13 +1127,122 @@ impl Process {
                                     start_pos,
                                     vec_table.len() - 1,
                                     pos,
+                                    FunctionKind::Function,
                                 ));
 
                                 vec_table.add_level(Table::new());
                             }
                             Operator::UseFunction => self
                                 .instructions
-                                .push((Intruction::GOTOFN, vec![name_a, name_b])),
+                                .push((Instruction::GOTOFN, vec![name_a, name_b])),
+                            Operator::If => {
+                                //delete = (false, false);
+                                self.instructions.insert(
+                                    self.instructions.len() - operation_count,
+                                    (Instruction::UPLV, Vec::new()),
+                                );
+                                vec_table.add_level(Table::new());
+                                self.instructions.push((Instruction::COND, vec![name_b]));
+
+                                self.incomplete_function.push((
+                                    self.instructions.len(),
+                                    operation_count,
+                                    1,
+                                    FunctionKind::Conditinal,
+                                ));
+
+                                for i in 0..self.loop_counter.len() {
+                                    self.loop_counter[i] += 1;
+                                }
+                            }
+                            Operator::Else => {
+                                let (position, _level, pos, _function_kind) =
+                                    self.incomplete_function.pop().unwrap();
+
+                                self.instructions.insert(
+                                    position,
+                                    self.goto_setup(
+                                        2 - self.loop_counter.len() as isize
+                                            + self.incomplete_loop.len() as isize,
+                                    ),
+                                );
+
+                                self.incomplete_function.push((
+                                    self.instructions.len(),
+                                    0,
+                                    pos,
+                                    FunctionKind::Conditinal,
+                                ));
+
+                                delete = (false, false);
+                            }
+                            Operator::Elif => {
+                                let (position, _level, pos, _function_kind) =
+                                    self.incomplete_function.pop().unwrap();
+
+                                self.instructions.insert(
+                                    position,
+                                    self.goto_setup(
+                                        2 - operation_count as isize
+                                            - self.loop_counter.len() as isize
+                                            + self.incomplete_loop.len() as isize,
+                                    ),
+                                );
+
+                                self.incomplete_function.push((
+                                    self.instructions.len() - operation_count,
+                                    0,
+                                    pos,
+                                    FunctionKind::Conditinal,
+                                ));
+
+                                self.instructions.push((Instruction::COND, vec![name_b]));
+
+                                self.incomplete_function.push((
+                                    self.instructions.len(),
+                                    operation_count,
+                                    0,
+                                    FunctionKind::Conditinal,
+                                ));
+
+                                for i in 0..self.loop_counter.len() {
+                                    self.loop_counter[i] += 1;
+                                }
+
+                                delete = (false, false);
+                            }
+                            Operator::Loop => {
+                                self.instructions.push((Instruction::UPLV, Vec::new()));
+                                vec_table.add_level(Table::new());
+
+                                self.incomplete_function.push((
+                                    self.instructions.len(),
+                                    vec_table.len() - 1,
+                                    1,
+                                    FunctionKind::Loop,
+                                ));
+
+                                self.loop_counter.push(0);
+
+                                delete = (false, false);
+                            }
+                            Operator::While => {}
+                            Operator::For => {}
+                            Operator::Match => {}
+                            Operator::Break => {
+                                self.incomplete_loop.push((
+                                    self.instructions.len(),
+                                    self.loop_counter.len(),
+                                    self.loop_counter[self.loop_counter.len() - 1],
+                                ));
+
+                                delete = (false, false);
+                            }
+                            Operator::Continue => {}
+                            Operator::Stop => {
+                                self.instructions.push((Instruction::STOP, Vec::new()));
+                                delete = (false, false);
+                            }
                             _ => break,
                         },
                     }
@@ -1003,6 +1275,27 @@ impl Process {
 
         //return instructions;
     }
+
+    fn goto_setup(&self, skip: isize) -> (Instruction, Vec<String>) {
+        /*let t = format!(
+            "wtf: {}, {}, {}, {}, {}",
+            self.instructions.len(),
+            self.incomplete_function.len(),
+            skip,
+            self.loop_setback,
+            self.incomplete_loop.len(),
+        );
+
+        println!("\n{}\n", t);*/
+
+        return (
+            Instruction::GOTO,
+            vec![usize_to_string(
+                ((self.instructions.len() + self.incomplete_function.len()) as isize + skip)
+                    as usize,
+            )],
+        );
+    }
 }
 
 impl Clone for Process {
@@ -1011,6 +1304,9 @@ impl Clone for Process {
             table: self.table.clone(),
             instructions: self.instructions.clone(),
             incomplete_function: self.incomplete_function.clone(),
+            incomplete_loop: self.incomplete_loop.clone(),
+            tables: self.tables.clone(),
+            loop_counter: self.loop_counter.clone(),
         }
     }
 }

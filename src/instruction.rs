@@ -1,7 +1,7 @@
 #[allow(unused_imports)]
 use crate::{eprint, eprintln};
 
-pub enum Intruction {
+pub enum Instruction {
     ASG,    // assign =
     NOT,    // not !
     ADD,    // add +
@@ -25,10 +25,14 @@ pub enum Intruction {
     GOTO,   // classic goto with the positino of the intruction to go to
     GOTOFN, // classic goto with the name of the function instead of the line
     END,    // end current process whether it be a function, a thread or the main program
-    TUP,    // , make into a tuple
+    TUP,    // make into a tuple ,
+    COND,   // condition if for while
+    STOP,   // make the program stop
+    UPLV,   // add a level to the table
+    DROPLV, // remove a level from the table
 }
 
-impl Intruction {
+impl Instruction {
     pub const fn get_code(&self) -> usize {
         match self {
             Self::ASG => 0,
@@ -55,11 +59,15 @@ impl Intruction {
             Self::GOTOFN => 21,
             Self::END => 22,
             Self::TUP => 23,
+            Self::COND => 24,
+            Self::STOP => 25,
+            Self::UPLV => 25,
+            Self::DROPLV => 25,
         }
     }
 }
 
-impl std::fmt::Display for Intruction {
+impl std::fmt::Display for Instruction {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Self::ASG => write!(f, "ASG"),
@@ -86,11 +94,15 @@ impl std::fmt::Display for Intruction {
             Self::GOTOFN => write!(f, "GOTOFN"),
             Self::END => write!(f, "END"),
             Self::TUP => write!(f, "TUP"),
+            Self::COND => write!(f, "COND"),
+            Self::STOP => write!(f, "STOP"),
+            Self::UPLV => write!(f, "UPLV"),
+            Self::DROPLV => write!(f, "DROPLV"),
         }
     }
 }
 
-impl std::cmp::PartialEq for Intruction {
+impl std::cmp::PartialEq for Instruction {
     fn eq(&self, other: &Self) -> bool {
         match self {
             Self::ASG => matches!(other, Self::ASG),
@@ -117,11 +129,15 @@ impl std::cmp::PartialEq for Intruction {
             Self::GOTOFN => matches!(other, Self::GOTOFN),
             Self::END => matches!(other, Self::END),
             Self::TUP => matches!(other, Self::TUP),
+            Self::COND => matches!(other, Self::COND),
+            Self::STOP => matches!(other, Self::STOP),
+            Self::UPLV => matches!(other, Self::UPLV),
+            Self::DROPLV => matches!(other, Self::DROPLV),
         }
     }
 }
 
-impl Clone for Intruction {
+impl Clone for Instruction {
     fn clone(&self) -> Self {
         match self {
             Self::ASG => Self::ASG,
@@ -148,8 +164,12 @@ impl Clone for Intruction {
             Self::GOTOFN => Self::GOTOFN,
             Self::END => Self::END,
             Self::TUP => Self::TUP,
+            Self::COND => Self::COND,
+            Self::STOP => Self::STOP,
+            Self::UPLV => Self::UPLV,
+            Self::DROPLV => Self::DROPLV,
         }
     }
 }
 
-impl Copy for Intruction {}
+impl Copy for Instruction {}

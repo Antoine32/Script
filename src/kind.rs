@@ -92,6 +92,7 @@ pub fn get_kind(chars: &[char], create: &mut bool) -> (String, Kind) {
                 while n < chars.len() && chars[n] != ')' {
                     n += 1;
                 }
+
                 n += 1;
             }
         }
@@ -133,22 +134,6 @@ pub fn get_kind(chars: &[char], create: &mut bool) -> (String, Kind) {
                     }
                 } else {
                     kind = Kind::BigInt;
-                    /*string.clear();
-
-                    for c in chars.get(0..n).unwrap() {
-                        string.push(*c);
-                    }
-
-                    match string.parse::<f64>() {
-                        Ok(n) => {
-                            if n.to_string() == string.as_str() {
-                                kind = Kind::Number
-                            } else {
-                                kind = Kind::BigInt
-                            }
-                        }
-                        Err(_) => kind = Kind::BigInt,
-                    }*/
                 }
 
                 break;
@@ -188,14 +173,23 @@ pub fn get_kind(chars: &[char], create: &mut bool) -> (String, Kind) {
                     }
                 }
 
-                if n < chars.len() && chars[n] == '(' && count_sep == 0 {
-                    kind = Kind::Function;
-                    n += 1;
+                if n < chars.len() && count_sep == 0 {
+                    match chars[n] {
+                        '(' => {
+                            kind = Kind::Function;
+                            n += 1;
 
-                    while n < chars.len() && chars[n] != ')' {
-                        n += 1;
+                            while n < chars.len() && chars[n] != ')' {
+                                n += 1;
+                            }
+
+                            n += 1;
+                        }
+                        '?' => {
+                            n += 1;
+                        }
+                        _ => {}
                     }
-                    n += 1;
                 }
 
                 break;

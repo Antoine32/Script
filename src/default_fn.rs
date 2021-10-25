@@ -9,7 +9,7 @@ use rand::prelude::*;
 #[allow(unused_imports)]
 use crate::{eprint, eprintln};
 
-pub const DEFAULTS_FUNCTIONS: [DefaultFunction; 10] = [
+pub const DEFAULTS_FUNCTIONS: [DefaultFunction; 12] = [
     DefaultFunction::Read,
     DefaultFunction::Pause,
     DefaultFunction::Print,
@@ -20,6 +20,8 @@ pub const DEFAULTS_FUNCTIONS: [DefaultFunction; 10] = [
     DefaultFunction::Sqrt,
     DefaultFunction::Pow,
     DefaultFunction::Rand,
+    DefaultFunction::Kind,
+    DefaultFunction::Parse,
 ];
 
 pub const DEFAULTS_FUNCTIONS_STR: [&str; DEFAULTS_FUNCTIONS.len()] = [
@@ -33,6 +35,8 @@ pub const DEFAULTS_FUNCTIONS_STR: [&str; DEFAULTS_FUNCTIONS.len()] = [
     DEFAULTS_FUNCTIONS[7].get_str(),
     DEFAULTS_FUNCTIONS[8].get_str(),
     DEFAULTS_FUNCTIONS[9].get_str(),
+    DEFAULTS_FUNCTIONS[10].get_str(),
+    DEFAULTS_FUNCTIONS[11].get_str(),
 ];
 
 pub const DEFAULTS_FUNCTIONS_ARGS: [&[&str]; DEFAULTS_FUNCTIONS.len()] = [
@@ -46,6 +50,8 @@ pub const DEFAULTS_FUNCTIONS_ARGS: [&[&str]; DEFAULTS_FUNCTIONS.len()] = [
     DEFAULTS_FUNCTIONS[7].get_arguments(),
     DEFAULTS_FUNCTIONS[8].get_arguments(),
     DEFAULTS_FUNCTIONS[9].get_arguments(),
+    DEFAULTS_FUNCTIONS[10].get_arguments(),
+    DEFAULTS_FUNCTIONS[11].get_arguments(),
 ];
 
 pub enum DefaultFunction {
@@ -59,6 +65,8 @@ pub enum DefaultFunction {
     Sqrt,
     Pow,
     Rand,
+    Kind,
+    Parse,
 }
 
 impl DefaultFunction {
@@ -84,6 +92,8 @@ impl DefaultFunction {
             Self::Sqrt => "sqrt()",
             Self::Pow => "pow()",
             Self::Rand => "rand()",
+            Self::Kind => "kind()",
+            Self::Parse => "parse()",
         }
     }
 
@@ -99,6 +109,8 @@ impl DefaultFunction {
             Self::Sqrt => &SQRT_ARGS,
             Self::Pow => &POW_ARGS,
             Self::Rand => &RAND_ARGS,
+            Self::Kind => &KIND_ARGS,
+            Self::Parse => &PARSE_ARGS,
         }
     }
 
@@ -114,6 +126,8 @@ impl DefaultFunction {
             Self::Sqrt => sqrt(vec_table),
             Self::Pow => pow(vec_table),
             Self::Rand => rand(vec_table),
+            Self::Kind => kind(vec_table),
+            Self::Parse => parse(vec_table),
         }
     }
 }
@@ -137,6 +151,8 @@ impl std::cmp::PartialEq for DefaultFunction {
             Self::Sqrt => matches!(other, Self::Sqrt),
             Self::Pow => matches!(other, Self::Pow),
             Self::Rand => matches!(other, Self::Rand),
+            Self::Kind => matches!(other, Self::Kind),
+            Self::Parse => matches!(other, Self::Parse),
         }
     }
 }
@@ -154,6 +170,8 @@ impl Clone for DefaultFunction {
             Self::Sqrt => Self::Sqrt,
             Self::Pow => Self::Pow,
             Self::Rand => Self::Rand,
+            Self::Kind => Self::Kind,
+            Self::Parse => Self::Parse,
         }
     }
 }
@@ -312,7 +330,7 @@ fn pow(vec_table: &mut VecTable) -> Tuple {
     } else {
         tuple.set_bigint(
             "",
-            bigint_pow(get_bigint(table, "num"), get_bigint(table, "exp")),
+            bigint_pow(&get_bigint(table, "num"), &get_bigint(table, "exp")),
         );
     }
 
@@ -328,7 +346,7 @@ fn rand(vec_table: &mut VecTable) -> Tuple {
     let mut min = get_number(table, "min");
     let mut max = get_number(table, "max");
 
-    if min < max {
+    if min > max {
         let buf = min;
         min = max;
         max = buf;
@@ -338,9 +356,48 @@ fn rand(vec_table: &mut VecTable) -> Tuple {
         max = 1.0;
     }
 
-    let delta = min - max;
+    let delta = max - min;
 
-    tuple.set_number("", (random::<f64>() % delta) + min);
+    tuple.set_number("", (random::<f64>() * delta) + min);
+
+    return tuple;
+}
+
+const KIND_ARGS: [&str; 1] = ["var"];
+
+fn kind(vec_table: &mut VecTable) -> Tuple {
+    let table = vec_table.get_level(vec_table.len() - 1);
+    let mut tuple = Tuple::new();
+
+    let var = get_tuple(table, "var");
+
+    tuple.set_string("", var.get(0).kind.to_string());
+
+    return tuple;
+}
+
+const PARSE_ARGS: [&str; 1] = ["str"];
+
+fn parse(vec_table: &mut VecTable) -> Tuple {
+    let table = vec_table.get_level(vec_table.len() - 1);
+    let mut tuple = Tuple::new();
+
+    let var = table.get("str").get_string("str", table).unwrap();
+
+    if var == "null" {
+        tuple.set_null("");
+    } else {
+        match var.parse::<bool>() {
+            Ok(value) => tuple.set_bool("", value),
+            Err(_) => match var.parse::<BigInt>() {
+                Ok(value) => tuple.set_bigint("", value),
+                Err(_) => match var.parse::<f64>() {
+                    Ok(value) => tuple.set_number("", value),
+                    Err(_) => tuple.set_string("", var),
+                },
+            },
+        };
+    }
 
     return tuple;
 }
