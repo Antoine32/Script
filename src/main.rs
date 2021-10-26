@@ -21,6 +21,7 @@ mod function_kind;
 mod instruction;
 mod instruction_fn;
 mod kind;
+mod loop_kind;
 mod operation;
 mod process;
 mod table;

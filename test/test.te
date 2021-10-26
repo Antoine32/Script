@@ -1,10 +1,10 @@
+stop
+
 a = 0
 
-if 1
-    while a < 5
-        print(a)
-        a += 1
-    end
-else
-    print("allo")
+while a < 5
+    print(a)
+    a += 1
+    continue
+    break
 end
