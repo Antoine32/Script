@@ -3,6 +3,19 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
 
+/*
+    the features are
+
+        time : 
+            to get the processing time and the running time
+
+        print : 
+            to get detail of the process to appear on the terminal useful for finding a problem during devlopement of the language
+        
+        pause :
+            pause at the end of the program
+*/
+
 #[cfg(feature = "time")]
 use std::time::Instant;
 
