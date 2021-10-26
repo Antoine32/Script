@@ -2,6 +2,7 @@ pub enum FunctionKind {
     Function,
     Conditinal,
     Loop,
+    Null,
 }
 
 impl std::cmp::PartialEq for FunctionKind {
@@ -10,6 +11,7 @@ impl std::cmp::PartialEq for FunctionKind {
             Self::Function => matches!(other, Self::Function),
             Self::Conditinal => matches!(other, Self::Conditinal),
             Self::Loop => matches!(other, Self::Loop),
+            Self::Null => matches!(other, Self::Null),
         }
     }
 }
@@ -20,6 +22,7 @@ impl Clone for FunctionKind {
             Self::Function => Self::Function,
             Self::Conditinal => Self::Conditinal,
             Self::Loop => Self::Loop,
+            Self::Null => Self::Null,
         }
     }
 }

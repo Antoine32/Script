@@ -964,6 +964,14 @@ impl Process {
                                 let (mut position, mut level, mut pos, mut function_kind) =
                                     self.incomplete_function.pop().unwrap();
 
+                                while function_kind == FunctionKind::Null {
+                                    let buf = self.incomplete_function.pop().unwrap();
+                                    position = buf.0;
+                                    level = buf.1;
+                                    pos = buf.2;
+                                    function_kind = buf.3;
+                                }
+
                                 match function_kind {
                                     FunctionKind::Function => {
                                         vec_table.get_level(level).get_mut_function(pos).table =
@@ -1028,30 +1036,26 @@ impl Process {
                                         let mut line_pass: usize;
 
                                         // pos is an identifier here
-                                        {
-                                            let _while_num = LoopKind::While as usize;
-
-                                            match pos {
-                                                _while_num => {
-                                                    self.instructions.insert(
-                                                        position,
-                                                        (
-                                                            Instruction::GOTO,
-                                                            vec![usize_to_string(
-                                                                (self.instructions.len() as isize
-                                                                    + self.incomplete_function.len()
-                                                                        as isize
-                                                                    + 4
-                                                                    + self.incomplete_loop.len()
-                                                                        as isize
-                                                                    - self.loop_counter.len()
-                                                                        as isize)
-                                                                    as usize,
-                                                            )],
-                                                        ),
-                                                    );
-                                                }
+                                        match pos {
+                                            LoopKind::WHILE => {
+                                                self.instructions.insert(
+                                                    position,
+                                                    (
+                                                        Instruction::GOTO,
+                                                        vec![usize_to_string(
+                                                            (self.instructions.len() as isize
+                                                                + self.incomplete_function.len()
+                                                                    as isize
+                                                                + 4
+                                                                + self.incomplete_loop.len()
+                                                                    as isize
+                                                                - self.loop_counter.len() as isize)
+                                                                as usize,
+                                                        )],
+                                                    ),
+                                                );
                                             }
+                                            _ => {}
                                         }
 
                                         // level is operation_count here
@@ -1130,6 +1134,7 @@ impl Process {
                                             vec![usize_to_string(vec_table.len())],
                                         ));
                                     }
+                                    FunctionKind::Null => {}
                                 }
 
                                 delete = (false, false);
@@ -1253,8 +1258,8 @@ impl Process {
 
                                 self.incomplete_function.push((
                                     self.instructions.len(),
-                                    0,                       // operation_count
-                                    LoopKind::Loop as usize, // stay 0, identifier
+                                    0,              // operation_count
+                                    LoopKind::LOOP, // stay 0, identifier
                                     FunctionKind::Loop,
                                 ));
 
@@ -1274,8 +1279,15 @@ impl Process {
                                 self.incomplete_function.push((
                                     self.instructions.len(),
                                     operation_count + 1,
-                                    LoopKind::While as usize, // stay 1, identifier
+                                    LoopKind::WHILE, // stay 1, identifier
                                     FunctionKind::Loop,
+                                ));
+
+                                self.incomplete_function.push((
+                                    0,
+                                    0,
+                                    0, // stay 1, identifier
+                                    FunctionKind::Null,
                                 ));
 
                                 self.loop_counter.push(0);

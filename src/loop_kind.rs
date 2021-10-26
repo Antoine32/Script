@@ -1,8 +1,18 @@
-pub enum LoopKind {
-    Loop = 0,
-    While = 1,
+#[non_exhaustive]
+pub struct LoopKind;
+
+impl LoopKind {
+    pub const LOOP: usize = 0;
+    pub const WHILE: usize = 1;
 }
 
+/*impl LoopKind {
+    pub fn value(&self) -> usize {
+        return *self as usize;
+    }
+}*/
+
+/*
 impl std::cmp::PartialEq for LoopKind {
     fn eq(&self, other: &Self) -> bool {
         match self {
@@ -28,3 +38,4 @@ impl Clone for LoopKind {
 }
 
 impl Copy for LoopKind {}
+*/
