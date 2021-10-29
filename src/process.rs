@@ -1234,7 +1234,9 @@ impl Process {
                                                     position,
                                                     self.goto_setup(
                                                         1 - self.loop_counter.len() as isize
-                                                            + self.incomplete_loop.len() as isize,
+                                                            + self.incomplete_loop.len() as isize
+                                                            - self.incomplete_match.len() as isize
+                                                            + (pos as isize / 2),
                                                     ),
                                                 );
 
@@ -1242,8 +1244,8 @@ impl Process {
                                                     self.loop_counter[i] -= 1;
                                                 }
 
-                                                if pos > 0 {
-                                                    if pos == 2 {
+                                                if pos % 2 > 0 {
+                                                    if pos == 3 {
                                                         self.incomplete_match.pop();
                                                     }
                                                     break;
@@ -1282,8 +1284,10 @@ impl Process {
                                         let mut count_loop: usize;
                                         let mut line_pass: usize;
 
+                                        let skip = pos == LoopKind::WHILE || pos == LoopKind::FOR;
+
                                         // pos is an identifier here
-                                        if pos == LoopKind::WHILE || pos == LoopKind::FOR {
+                                        if skip {
                                             self.instructions.insert(
                                                 position,
                                                 (
@@ -1294,7 +1298,8 @@ impl Process {
                                                                 as isize
                                                             + 4
                                                             + self.incomplete_loop.len() as isize
-                                                            - self.loop_counter.len() as isize)
+                                                            - self.loop_counter.len() as isize
+                                                            - self.incomplete_match.len() as isize)
                                                             as usize,
                                                     )],
                                                 ),
@@ -1313,7 +1318,13 @@ impl Process {
 
                                             if level_loop == self.loop_counter.len() {
                                                 self.instructions.insert(
-                                                    position_loop + count_loop,
+                                                    position_loop + count_loop + {
+                                                        if skip {
+                                                            1
+                                                        } else {
+                                                            0
+                                                        }
+                                                    },
                                                     (
                                                         Instruction::GOTO,
                                                         vec![usize_to_string(
@@ -1322,7 +1333,8 @@ impl Process {
                                                                 + line_pass
                                                                 + self.incomplete_loop.len())
                                                                 as isize
-                                                                - (self.loop_counter.len())
+                                                                - (self.loop_counter.len()
+                                                                    + self.incomplete_match.len())
                                                                     as isize)
                                                                 as usize,
                                                         )],
@@ -1461,7 +1473,8 @@ impl Process {
                                     position,
                                     self.goto_setup(
                                         2 - self.loop_counter.len() as isize
-                                            + self.incomplete_loop.len() as isize,
+                                            + self.incomplete_loop.len() as isize
+                                            - self.incomplete_match.len() as isize,
                                     ),
                                 );
 
@@ -1483,7 +1496,8 @@ impl Process {
                                     self.goto_setup(
                                         2 - operation_count as isize
                                             - self.loop_counter.len() as isize
-                                            + self.incomplete_loop.len() as isize,
+                                            + self.incomplete_loop.len() as isize
+                                            - self.incomplete_match.len() as isize,
                                     ),
                                 );
 
@@ -1518,54 +1532,53 @@ impl Process {
 
                                 self.instructions.push((Instruction::MATCH, vec![name_b]));
 
-                                self.incomplete_function.push((
+                                /*self.incomplete_function.push((
                                     self.instructions.len(),
                                     operation_count,
                                     3,
                                     FunctionKind::Conditional,
-                                ));
+                                ));*/
 
                                 self.incomplete_match.push(self.instructions.len() - 1);
+
+                                /*for i in 0..self.loop_counter.len() {
+                                    self.loop_counter[i] += 1;
+                                }*/
+                            }
+                            Operator::Case => {
+                                let position =
+                                    self.incomplete_match[self.incomplete_match.len() - 1];
+
+                                let mut len = (self.instructions[position].1.len() - 1) / 2;
+
+                                if len > 0 {
+                                    self.incomplete_function.pop();
+                                }
+
+                                self.incomplete_function.push((
+                                    self.instructions.len(),
+                                    0,
+                                    if len == 0 { 3 } else { 2 },
+                                    FunctionKind::Conditional,
+                                ));
+
+                                len += self.instructions.len();
+
+                                for i in 0..(self.incomplete_match.len() - 1) {
+                                    let pos = self.incomplete_match[i];
+                                    len += (self.instructions[pos].1.len() - 1) / 2;
+                                }
+
+                                len += self.loop_counter.len();
+
+                                self.incomplete_function.push((0, 0, 0, FunctionKind::Null));
+
+                                self.instructions[position].1.push(name_b);
+                                self.instructions[position].1.push(usize_to_string(len));
 
                                 for i in 0..self.loop_counter.len() {
                                     self.loop_counter[i] += 1;
                                 }
-                            }
-                            Operator::Case => {
-                                let (position, level, pos, function_kind) =
-                                    self.incomplete_function.pop().unwrap();
-
-                                if pos == 3 {
-                                    self.incomplete_function.push((
-                                        self.instructions.len(),
-                                        0,
-                                        2,
-                                        FunctionKind::Conditional,
-                                    ));
-                                } else {
-                                    self.incomplete_function.push((
-                                        position,
-                                        level,
-                                        pos,
-                                        function_kind,
-                                    ));
-
-                                    self.incomplete_function.push((
-                                        self.instructions.len(),
-                                        0,
-                                        0,
-                                        FunctionKind::Conditional,
-                                    ));
-                                }
-
-                                let position =
-                                    self.incomplete_match[self.incomplete_match.len() - 1];
-
-                                let len = self.instructions.len()
-                                    + (self.instructions[position].1.len() - 1) / 2;
-
-                                self.instructions[position].1.push(name_b);
-                                self.instructions[position].1.push(usize_to_string(len));
                             }
                             Operator::Loop => {
                                 self.instructions.push((Instruction::UPLV, Vec::new()));
