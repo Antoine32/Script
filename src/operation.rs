@@ -1,7 +1,7 @@
 #[allow(unused_imports)]
 use crate::{eprint, eprintln};
 
-pub const OPERATORS: [Operator; 45] = [
+pub const OPERATORS: [Operator; 46] = [
     Operator::PowAsign,
     Operator::AddAsign,
     Operator::SubAsign,
@@ -47,6 +47,7 @@ pub const OPERATORS: [Operator; 45] = [
     Operator::Break,
     Operator::Continue,
     Operator::Stop,
+    Operator::Iterate,
 ];
 
 pub const OPERATORS_STR: [&str; OPERATORS.len()] = [
@@ -95,6 +96,7 @@ pub const OPERATORS_STR: [&str; OPERATORS.len()] = [
     OPERATORS[42].get_str(),
     OPERATORS[43].get_str(),
     OPERATORS[44].get_str(),
+    OPERATORS[45].get_str(),
 ];
 
 pub enum Operator {
@@ -143,26 +145,28 @@ pub enum Operator {
     Break,
     Continue,
     Stop,
+    Iterate,
 }
 
 // Priority
-pub const P_USE_FUNCTION: usize = 14;
-pub const P_NOT: usize = 13; // !
-pub const P_POW: usize = 12; // **
-pub const P_MUL_DIV_MOD: usize = 11; // * / %
-pub const P_ADD_SUB: usize = 10; // + -
-pub const P_BIT_AND: usize = 9; // &
-pub const P_XOR: usize = 8; // ^
-pub const P_BIT_OR: usize = 7; // |
-pub const P_COMPARAISON: usize = 6; // == != < > <= >=
-pub const P_AND: usize = 5; // &&
-pub const P_OR: usize = 4; // ||
-pub const P_SEPARATOR: usize = 3;
+pub const P_USE_FUNCTION: usize = 15;
+pub const P_NOT: usize = 14; // !
+pub const P_POW: usize = 13; // **
+pub const P_MUL_DIV_MOD: usize = 12; // * / %
+pub const P_ADD_SUB: usize = 11; // + -
+pub const P_BIT_AND: usize = 10; // &
+pub const P_XOR: usize = 9; // ^
+pub const P_BIT_OR: usize = 8; // |
+pub const P_COMPARAISON: usize = 7; // == != < > <= >=
+pub const P_AND: usize = 6; // &&
+pub const P_OR: usize = 5; // ||
+pub const P_SEPARATOR: usize = 4; // ,
+pub const P_ITERATE: usize = 3; // in
 pub const P_ASSIGNEMENT: usize = 2; // = += -= *= /= %= &= |= ^= **=
 pub const P_CONDITION: usize = 1; // if else
 pub const P_RETURN_FUNCTION: usize = 0; // return
 
-pub const LEVELS_OF_PRIORITY: usize = 15;
+pub const LEVELS_OF_PRIORITY: usize = 16;
 
 impl Operator {
     pub fn from_string(string: &str) -> Option<Self> {
@@ -222,6 +226,7 @@ impl Operator {
             Self::Break => P_RETURN_FUNCTION,
             Self::Continue => P_RETURN_FUNCTION,
             Self::Stop => P_RETURN_FUNCTION,
+            Self::Iterate => P_ITERATE,
         }
     }
 
@@ -272,6 +277,7 @@ impl Operator {
             Self::Break => "break",
             Self::Continue => "continue",
             Self::Stop => "stop",
+            Self::Iterate => "in",
         }
     }
 
@@ -340,6 +346,7 @@ impl std::cmp::PartialEq for Operator {
             Self::Break => matches!(other, Self::Break),
             Self::Continue => matches!(other, Self::Continue),
             Self::Stop => matches!(other, Self::Stop),
+            Self::Iterate => matches!(other, Self::Iterate),
         }
     }
 }
@@ -392,6 +399,7 @@ impl Clone for Operator {
             Self::Break => Self::Break,
             Self::Continue => Self::Continue,
             Self::Stop => Self::Stop,
+            Self::Iterate => Self::Iterate,
         }
     }
 }

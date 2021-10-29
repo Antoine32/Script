@@ -1,9 +1,11 @@
 use crate::function::*;
 use crate::instruction::*;
 use crate::instruction_fn::*;
+use crate::iterator::*;
 use crate::kind::*;
 use crate::operation::*;
 use crate::table::*;
+use crate::tup_kind::*;
 use crate::tuple::*;
 use crate::variable::*;
 use crate::vec_table::*;
@@ -70,10 +72,25 @@ impl Process {
         mut line: String,
         line_num: &mut usize,
         vec_table: &mut VecTable,
-    ) -> (String, usize) {
+        in_layer: usize,
+        is_fn: bool,
+        tup_kind: TupKind,
+    ) -> (String, usize, Table, usize) {
         let start_pos = self.instructions.len();
         let mut operation_count = 0;
         let mut at = 0;
+
+        let is_fn = {
+            if in_layer == 0 {
+                line = line.trim().to_string();
+                match line.find("fn") {
+                    Some(pos) => pos == 0,
+                    None => false,
+                }
+            } else {
+                is_fn
+            }
+        };
 
         {
             let mut do_a = true;
@@ -119,13 +136,20 @@ impl Process {
         }
 
         line = line.trim().to_string();
+        let mut table = Table::new();
 
         while at < line.len() {
-            let mut pos_inc = 0;
-            let mut pos_dec = 0;
+            let mut pos_inc_par = 0;
+            let mut pos_dec_par = 0;
 
-            let mut count_inc = 0;
-            let mut count_dec = 0;
+            let mut pos_inc_bra = 0;
+            let mut pos_dec_bra = 0;
+
+            let mut count_inc_par = 0;
+            let mut count_dec_par = 0;
+
+            let mut count_inc_bra = 0;
+            let mut count_dec_bra = 0;
 
             let mut do_a = true;
             let mut do_b = true;
@@ -134,31 +158,60 @@ impl Process {
 
             let mut do_b_pos = 0;
 
+            let mut is = 0;
+
             for (i, ch) in line.get(at..).unwrap().match_indices(|ch| {
-                ch == '(' || ch == ')' || ch == '\"' || ch == '\'' || ch == '\\'
+                ch == '('
+                    || ch == ')'
+                    || ch == '{'
+                    || ch == '}'
+                    || ch == '\"'
+                    || ch == '\''
+                    || ch == '\\'
             }) {
                 match ch {
                     "(" => {
                         if do_a {
-                            count_inc += 1;
+                            count_inc_par += 1;
 
-                            if count_inc == 1 {
-                                pos_inc = i;
+                            if count_inc_par == 1 {
+                                pos_inc_par = i + at;
                             }
                         }
                     }
                     ")" => {
                         if do_a {
-                            count_dec += 1;
+                            count_dec_par += 1;
 
-                            if count_dec == count_inc {
-                                pos_dec = i;
+                            if count_dec_par == count_inc_par {
+                                pos_dec_par = i + at;
+                                is = 1;
+                                break;
+                            }
+                        }
+                    }
+                    "{" => {
+                        if do_a {
+                            count_inc_bra += 1;
+
+                            if count_inc_bra == 1 {
+                                pos_inc_bra = i + at;
+                            }
+                        }
+                    }
+                    "}" => {
+                        if do_a {
+                            count_dec_bra += 1;
+
+                            if count_dec_bra == count_inc_bra {
+                                pos_dec_bra = i + at;
+                                is = 2;
                                 break;
                             }
                         }
                     }
                     "\"" | "\'" => {
-                        if (do_b || (i - do_b_pos > 1))
+                        if (do_b || ((i + at) - do_b_pos > 1))
                             && (ch == "\"" || can_a)
                             && (ch == "\'" || !can_a)
                         {
@@ -173,25 +226,61 @@ impl Process {
                     }
                     "\\" => {
                         do_b = false;
-                        do_b_pos = i;
+                        do_b_pos = i + at;
                     }
                     _ => {}
                 }
+
+                is = 0;
             }
 
-            if count_dec == count_inc && count_inc > 0 {
+            if (is == 1 && count_dec_par == count_inc_par && count_inc_par > 0)
+                || (is == 2 && count_dec_bra == count_inc_bra && count_inc_bra > 0)
+            {
+                let pos_inc = match is {
+                    1 => pos_inc_par,
+                    2 => pos_inc_bra,
+                    _ => 0,
+                };
+
+                let pos_dec = match is {
+                    1 => pos_dec_par,
+                    2 => pos_dec_bra,
+                    _ => 0,
+                };
+
+                let tupled = {
+                    if is == 2 {
+                        TupKind::Inconditional
+                    } else if pos_inc >= 1 {
+                        if line.chars().collect::<Vec<char>>()[pos_inc - 1].is_alphanumeric() {
+                            TupKind::Conditional
+                        } else {
+                            TupKind::None
+                        }
+                    } else {
+                        TupKind::None
+                    }
+                };
+
                 let buf = self.from(
                     line.get((pos_inc + 1)..pos_dec).unwrap().to_string(),
                     line_num,
                     vec_table,
+                    in_layer + 1,
+                    is_fn,
+                    tupled,
                 );
 
                 let mut name = buf.0;
                 operation_count += buf.1;
+                let tab = buf.2;
+
+                table.merge(tab);
 
                 let real_name = get_real_name(&name);
 
-                if real_name.contains("(") {
+                if real_name.contains(|ch| ch == '(' || ch == '{') {
                     name = name.trim_start_matches(real_name).to_string();
                 }
 
@@ -201,11 +290,17 @@ impl Process {
                 let mult = (
                     line.get(0..(pos_inc + 1)).unwrap(),
                     name,
-                    line.get(pos_dec..).unwrap(),
+                    line.get((pos_dec + 1)..).unwrap(),
                 );
 
-                at = mult.0.len() + mult.1.len();
-                line = format!("{}{}{}", mult.0, mult.1, mult.2);
+                at = mult.0.len() + mult.1.len() + 1 + 2;
+                line = format!(
+                    "{}{}{} {}",
+                    mult.0,
+                    mult.1,
+                    if is == 1 { ")" } else { "}" },
+                    mult.2
+                );
             } else {
                 break;
             }
@@ -317,7 +412,9 @@ impl Process {
                         _ => {}
                     }
 
-                    table.set_from_file(&name, raw_value, kind);
+                    if !table.contains(&name) {
+                        table.set_from_file(&name, raw_value, kind);
+                    }
 
                     let var = table.get(&name);
 
@@ -336,7 +433,6 @@ impl Process {
             }
         }
 
-        let mut table = Table::new();
         let mut entry_list: Vec<String> = Vec::new();
         let mut operator_order: Vec<Vec<usize>> = Vec::with_capacity(LEVELS_OF_PRIORITY);
 
@@ -352,7 +448,7 @@ impl Process {
         while n < line_char.len() {
             c = line_char[n];
 
-            if !(c.is_whitespace() || c == '(' || c == ')') {
+            if !(c.is_whitespace() || c == '(' || c == ')' || c == '{' || c == '}') {
                 let (raw_value, kind) = get_kind(line_char.get(n..).unwrap(), &mut create);
 
                 if raw_value == Operator::Sub.get_str() && last_kind == Kind::Operator {
@@ -488,7 +584,9 @@ impl Process {
             let var = table.get(p);
 
             if var.kind == Kind::Operator {
-                if var.get_operator("").unwrap() != Operator::SeparatorTuple {
+                if !(var.get_operator("").unwrap() == Operator::SeparatorTuple
+                    || var.get_operator("").unwrap() == Operator::Iterate)
+                {
                     operation_count += 1;
                 }
             } else if find {
@@ -504,14 +602,39 @@ impl Process {
             vec_table,
             start_pos,
             operation_count - 1, // -1 because of if and elif being operation
+            is_fn,
         );
 
         table.clear_operator();
         table.clear_null();
 
+        if tup_kind != TupKind::None {
+            let entry = entry_list[0].clone();
+            let var = table.get(&entry).clone();
+
+            if var.kind == Kind::Tuple && table.get_tuple(var.pos).setup {
+                table.get_mut_tuple(var.pos).setup = false;
+                table.get_mut_tuple(var.pos).tup_kind = tup_kind;
+            } else {
+                let mut tup = Tuple::new();
+                tup.setup = false;
+                tup.tup_kind = tup_kind;
+                tup.push(&var, &entry, &table);
+                table.set_tuple(&entry, tup);
+            }
+        }
+
+        for (_name, var) in table.variables.clone().iter() {
+            if var.kind == Kind::Tuple {
+                table.get_mut_tuple(var.pos).setup = false;
+            }
+        }
+
+        let tab = table.clone();
+
         self.table.merge(table);
 
-        return (name, operation_count);
+        return (name, operation_count, tab, in_layer);
     }
 
     #[cfg(feature = "print")]
@@ -549,7 +672,12 @@ impl Process {
         }
     }
 
-    pub fn get_variable(vec_table: &mut VecTable, name: &str, table: &mut Table) {
+    pub fn get_variable(
+        vec_table: &mut VecTable,
+        name: &str,
+        table: &mut Table,
+        tup_kind: TupKind,
+    ) {
         let var = table.get(name);
 
         match var.kind {
@@ -571,6 +699,9 @@ impl Process {
                         Kind::Tuple => {
                             table.set_tuple(name, var.get_tuple(real_name, level).unwrap())
                         }
+                        Kind::Iterator => {
+                            table.set_iterator(name, var.get_iterator(real_name, level).unwrap())
+                        }
                         Kind::Null => table.set_null(name, true),
                         Kind::Operator => {}
                         Kind::Function => {}
@@ -581,12 +712,50 @@ impl Process {
             Kind::Tuple => {
                 let mut tuple = table.get_tuple(var.pos);
 
-                for i in 0..(tuple.len()) {
-                    let name_b = &tuple.get_name(i).to_string();
-                    Self::get_variable(vec_table, name_b, &mut tuple.table);
-                }
+                if tup_kind == TupKind::Conditional
+                    || tuple.tup_kind == TupKind::Inconditional
+                    || tuple.len() > 1
+                {
+                    for i in 0..(tuple.len()) {
+                        let name_b = &tuple.get_name(i).to_string();
+                        Self::get_variable(
+                            vec_table,
+                            name_b,
+                            &mut tuple.table,
+                            TupKind::Inconditional,
+                        );
+                    }
 
-                table.set_tuple(name, tuple);
+                    table.set_tuple(name, tuple);
+                } else {
+                    if tuple.len() == 1 {
+                        let var = tuple.get(0);
+                        let real_name = tuple.get_name(0);
+
+                        match var.kind {
+                            Kind::String => table
+                                .set_string(name, var.get_string(real_name, &tuple.table).unwrap()),
+                            Kind::Number => table
+                                .set_number(name, var.get_number(real_name, &tuple.table).unwrap()),
+                            Kind::BigInt => table
+                                .set_bigint(name, var.get_bigint(real_name, &tuple.table).unwrap()),
+                            Kind::Bool => {
+                                table.set_bool(name, var.get_bool(real_name, &tuple.table).unwrap())
+                            }
+                            Kind::Tuple => table
+                                .set_tuple(name, var.get_tuple(real_name, &tuple.table).unwrap()),
+                            Kind::Iterator => table.set_iterator(
+                                name,
+                                var.get_iterator(real_name, &tuple.table).unwrap(),
+                            ),
+                            Kind::Null => table.set_null(name, true),
+                            Kind::Operator => {}
+                            Kind::Function => {}
+                        }
+                    } else {
+                        table.set_null(name, true)
+                    }
+                }
             }
             _ => {}
         }
@@ -605,7 +774,16 @@ impl Process {
             let mut vars: Vec<Variable> = Vec::with_capacity(names.len());
 
             for name in names.iter() {
-                Self::get_variable(vec_table, name, &mut this.table);
+                Self::get_variable(
+                    vec_table,
+                    name,
+                    &mut this.table,
+                    if instruction == Instruction::GOTOFN {
+                        TupKind::Conditional
+                    } else {
+                        TupKind::Inconditional
+                    },
+                );
                 vars.push(this.table.get(name).clone());
             }
 
@@ -729,6 +907,10 @@ impl Process {
                                         Kind::Tuple => this
                                             .table
                                             .set_tuple(&name, tuple_b.table.get_tuple(var.pos)),
+                                        Kind::Iterator => this.table.set_iterator(
+                                            &name,
+                                            tuple_b.table.get_iterator(var.pos),
+                                        ),
                                         Kind::Function => {}
                                         Kind::Operator => {}
                                         Kind::Null => this.table.set_null(&name, true),
@@ -754,8 +936,14 @@ impl Process {
                         );
                     }
                 }
-                Instruction::TUP => {
+                Instruction::PUSH => {
                     let mut tuple = vars[0].get_tuple(&names[0], &this.table).unwrap();
+                    tuple.push(&vars[1], &names[1], &this.table);
+                    this.table.set_tuple(&names[0], tuple);
+                }
+                Instruction::TUP => {
+                    let mut tuple = Tuple::new();
+                    tuple.push(this.table.get(&names[0]), &names[0], &this.table);
                     tuple.push(&vars[1], &names[1], &this.table);
                     this.table.set_tuple(&names[0], tuple);
                 }
@@ -783,6 +971,25 @@ impl Process {
                     eprintln!("\nlevel: {}", vec_table.len() - 1);
                     eprintln!("\n{}\t: {}\t: {}\n", "name", "kind", "value");
                 }
+                Instruction::IN => {
+                    let tuple = this.table.get_tuple(vars[1].pos).clone();
+                    let iterator = this.table.get_mut_iterator(vars[0].pos);
+
+                    match vars[1].kind {
+                        Kind::Tuple => iterator.set_finite(&tuple),
+                        _ => {}
+                    }
+                }
+                Instruction::NEXT => {
+                    let len = this.tables.len() - 1;
+                    let table = &mut this.tables[len];
+                    let variables = table.get_mut_iterator(table.get(&names[0]).pos);
+                    let ans = variables.next(vec_table);
+
+                    if ans {
+                        j += 1;
+                    }
+                }
             }
 
             j += 1;
@@ -806,6 +1013,7 @@ impl Process {
         vec_table: &mut VecTable,
         start_pos: usize,
         operation_count: usize,
+        is_fn: bool,
     ) {
         // -> Vec<(Instruction, Vec<String>)>
         // let mut instructions: Vec<(Instruction, Vec<String>)> = Vec::new();
@@ -983,9 +1191,9 @@ impl Process {
                                         );
                                         self.instructions.push((Instruction::END, Vec::new()));
                                     }
-                                    FunctionKind::Conditinal => {
+                                    FunctionKind::Conditional => {
                                         loop {
-                                            if function_kind == FunctionKind::Conditinal {
+                                            if function_kind == FunctionKind::Conditional {
                                                 self.instructions.insert(
                                                     position,
                                                     self.goto_setup(
@@ -1036,26 +1244,22 @@ impl Process {
                                         let mut line_pass: usize;
 
                                         // pos is an identifier here
-                                        match pos {
-                                            LoopKind::WHILE => {
-                                                self.instructions.insert(
-                                                    position,
-                                                    (
-                                                        Instruction::GOTO,
-                                                        vec![usize_to_string(
-                                                            (self.instructions.len() as isize
-                                                                + self.incomplete_function.len()
-                                                                    as isize
-                                                                + 4
-                                                                + self.incomplete_loop.len()
-                                                                    as isize
-                                                                - self.loop_counter.len() as isize)
-                                                                as usize,
-                                                        )],
-                                                    ),
-                                                );
-                                            }
-                                            _ => {}
+                                        if pos == LoopKind::WHILE || pos == LoopKind::FOR {
+                                            self.instructions.insert(
+                                                position,
+                                                (
+                                                    Instruction::GOTO,
+                                                    vec![usize_to_string(
+                                                        (self.instructions.len() as isize
+                                                            + self.incomplete_function.len()
+                                                                as isize
+                                                            + 4
+                                                            + self.incomplete_loop.len() as isize
+                                                            - self.loop_counter.len() as isize)
+                                                            as usize,
+                                                    )],
+                                                ),
+                                            );
                                         }
 
                                         // level is operation_count here
@@ -1069,18 +1273,6 @@ impl Process {
                                             line_pass = a.3;
 
                                             if level_loop == self.loop_counter.len() {
-                                                /*let t = format!(
-                                                    "wtf: {}, {}, {}, {}, {}, {}",
-                                                    self.instructions.len(),
-                                                    self.incomplete_function.len(),
-                                                    self.incomplete_loop.len(),
-                                                    self.loop_counter.len(),
-                                                    count_loop,
-                                                    position_loop
-                                                );
-
-                                                println!("\n--------------\n{}\n{}\n", t, t);*/
-
                                                 self.instructions.insert(
                                                     position_loop + count_loop,
                                                     (
@@ -1140,12 +1332,39 @@ impl Process {
                                 delete = (false, false);
                             }
                             Operator::SeparatorTuple => {
-                                let mut tuple =
-                                    table.get(&name_a).get_tuple(&name_a, &table).unwrap();
-                                tuple.push(&table.get(&name_b), &name_b, &table);
+                                let setup;
+
+                                let mut tuple = {
+                                    let var_a = table.get(&name_a);
+
+                                    setup = {
+                                        if var_a.kind == Kind::Tuple {
+                                            table.get_tuple(var_a.pos).setup
+                                        } else {
+                                            true
+                                        }
+                                    };
+
+                                    if !setup {
+                                        let mut tup = Tuple::new();
+                                        tup.push(&table.get(&name_a), &name_a, &table);
+                                        tup
+                                    } else {
+                                        table.get(&name_a).get_tuple(&name_a, &table).unwrap()
+                                    }
+                                };
+
+                                if is_fn {
+                                    tuple.push(&table.get(&name_b), &name_b, &table);
+                                } else if setup {
+                                    self.instructions
+                                        .push((Instruction::PUSH, vec![name_a.clone(), name_b]));
+                                } else {
+                                    self.instructions
+                                        .push((Instruction::TUP, vec![name_a.clone(), name_b]));
+                                }
+
                                 table.set_tuple(&name_a, tuple);
-                                //self.instructions
-                                // .push((Instruction::TUP, vec![name_a, name_b]));
                             }
                             Operator::SetFunction => {
                                 let function = Function::new(
@@ -1189,7 +1408,7 @@ impl Process {
                                     self.instructions.len(),
                                     operation_count,
                                     1,
-                                    FunctionKind::Conditinal,
+                                    FunctionKind::Conditional,
                                 ));
 
                                 for i in 0..self.loop_counter.len() {
@@ -1212,7 +1431,7 @@ impl Process {
                                     self.instructions.len(),
                                     0,
                                     pos,
-                                    FunctionKind::Conditinal,
+                                    FunctionKind::Conditional,
                                 ));
 
                                 delete = (false, false);
@@ -1234,7 +1453,7 @@ impl Process {
                                     self.instructions.len() - operation_count,
                                     0,
                                     pos,
-                                    FunctionKind::Conditinal,
+                                    FunctionKind::Conditional,
                                 ));
 
                                 self.instructions.push((Instruction::COND, vec![name_b]));
@@ -1243,7 +1462,7 @@ impl Process {
                                     self.instructions.len(),
                                     operation_count,
                                     0,
-                                    FunctionKind::Conditinal,
+                                    FunctionKind::Conditional,
                                 ));
 
                                 for i in 0..self.loop_counter.len() {
@@ -1283,19 +1502,36 @@ impl Process {
                                     FunctionKind::Loop,
                                 ));
 
-                                self.incomplete_function.push((
-                                    0,
-                                    0,
-                                    0, // stay 1, identifier
-                                    FunctionKind::Null,
-                                ));
+                                self.incomplete_function.push((0, 0, 0, FunctionKind::Null));
 
                                 self.loop_counter.push(0);
 
                                 delete = (false, false);
                             }
-                            Operator::For => {}
-                            Operator::Match => {}
+                            Operator::For => {
+                                self.instructions.insert(
+                                    self.instructions.len() - operation_count,
+                                    (Instruction::UPLV, Vec::new()),
+                                );
+                                vec_table.add_level(Table::new());
+
+                                self.instructions.push((Instruction::NEXT, vec![name_b]));
+
+                                self.incomplete_function.push((
+                                    self.instructions.len(),
+                                    1,
+                                    LoopKind::FOR, // stay 1, identifier
+                                    FunctionKind::Loop,
+                                ));
+
+                                self.incomplete_function.push((0, 0, 0, FunctionKind::Null));
+
+                                self.loop_counter.push(0);
+
+                                delete = (false, false);
+                            }
+                            Operator::Match => { //////////////////////////
+                            }
                             Operator::Break => {
                                 self.incomplete_loop.push((
                                     self.instructions.len(),
@@ -1319,6 +1555,30 @@ impl Process {
                             Operator::Stop => {
                                 self.instructions.push((Instruction::STOP, Vec::new()));
                                 delete = (false, false);
+                            }
+                            Operator::Iterate => {
+                                let variables = {
+                                    let var = self.table.get(&name_a);
+
+                                    if var.kind == Kind::Null {
+                                        table.get(&name_a).get_tuple(&name_a, &table).unwrap()
+                                    } else {
+                                        var.get_tuple(&name_a, &self.table).unwrap()
+                                    }
+                                };
+
+                                let iterator = Iterator::from(variables);
+                                table
+                                    .set_iterator(&entry_list[operator_position].clone(), iterator);
+
+                                entry_list[operator_position - 1] =
+                                    entry_list[operator_position].clone();
+
+                                self.instructions.push((
+                                    Instruction::IN,
+                                    vec![entry_list[operator_position].clone(), name_b],
+                                ));
+                                delete = (false, true);
                             }
                             _ => break,
                         },
@@ -1354,17 +1614,6 @@ impl Process {
     }
 
     fn goto_setup(&self, skip: isize) -> (Instruction, Vec<String>) {
-        /*let t = format!(
-            "wtf: {}, {}, {}, {}, {}",
-            self.instructions.len(),
-            self.incomplete_function.len(),
-            skip,
-            self.loop_setback,
-            self.incomplete_loop.len(),
-        );
-
-        println!("\n{}\n", t);*/
-
         return (
             Instruction::GOTO,
             vec![usize_to_string(

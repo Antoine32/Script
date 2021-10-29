@@ -26,10 +26,13 @@ pub enum Instruction {
     GOTOFN, // classic goto with the name of the function instead of the line
     END,    // end current process whether it be a function, a thread or the main program
     TUP,    // make into a tuple ,
+    PUSH,
     COND,   // condition if for while
     STOP,   // make the program stop
     UPLV,   // add a level to the table
     DROPLV, // remove a level from the table
+    IN,     // for i in x
+    NEXT,
 }
 
 impl Instruction {
@@ -59,10 +62,13 @@ impl Instruction {
             Self::GOTOFN => 21,
             Self::END => 22,
             Self::TUP => 23,
-            Self::COND => 24,
-            Self::STOP => 25,
-            Self::UPLV => 25,
-            Self::DROPLV => 25,
+            Self::PUSH => 24,
+            Self::COND => 25,
+            Self::STOP => 26,
+            Self::UPLV => 27,
+            Self::DROPLV => 28,
+            Self::IN => 29,
+            Self::NEXT => 30,
         }
     }
 }
@@ -94,10 +100,13 @@ impl std::fmt::Display for Instruction {
             Self::GOTOFN => write!(f, "GOTOFN"),
             Self::END => write!(f, "END"),
             Self::TUP => write!(f, "TUP"),
+            Self::PUSH => write!(f, "PUSH"),
             Self::COND => write!(f, "COND"),
             Self::STOP => write!(f, "STOP"),
             Self::UPLV => write!(f, "UPLV"),
             Self::DROPLV => write!(f, "DROPLV"),
+            Self::IN => write!(f, "IN"),
+            Self::NEXT => write!(f, "NEXT"),
         }
     }
 }
@@ -129,10 +138,13 @@ impl std::cmp::PartialEq for Instruction {
             Self::GOTOFN => matches!(other, Self::GOTOFN),
             Self::END => matches!(other, Self::END),
             Self::TUP => matches!(other, Self::TUP),
+            Self::PUSH => matches!(other, Self::PUSH),
             Self::COND => matches!(other, Self::COND),
             Self::STOP => matches!(other, Self::STOP),
             Self::UPLV => matches!(other, Self::UPLV),
             Self::DROPLV => matches!(other, Self::DROPLV),
+            Self::IN => matches!(other, Self::IN),
+            Self::NEXT => matches!(other, Self::NEXT),
         }
     }
 }
@@ -164,10 +176,13 @@ impl Clone for Instruction {
             Self::GOTOFN => Self::GOTOFN,
             Self::END => Self::END,
             Self::TUP => Self::TUP,
+            Self::PUSH => Self::PUSH,
             Self::COND => Self::COND,
             Self::STOP => Self::STOP,
             Self::UPLV => Self::UPLV,
             Self::DROPLV => Self::DROPLV,
+            Self::IN => Self::IN,
+            Self::NEXT => Self::NEXT,
         }
     }
 }

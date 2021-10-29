@@ -4,6 +4,7 @@ pub struct LoopKind;
 impl LoopKind {
     pub const LOOP: usize = 0;
     pub const WHILE: usize = 1;
+    pub const FOR: usize = 2;
 }
 
 /*impl LoopKind {

@@ -1,4 +1,5 @@
 use crate::function::*;
+use crate::iterator::*;
 use crate::kind::*;
 use crate::operation::*;
 use crate::tuple::*;
@@ -20,6 +21,7 @@ pub struct Table {
     pub vec_bool: VecFree<bool>,
     pub vec_function: VecFree<Function>,
     pub vec_tuple: VecFree<Tuple>,
+    pub vec_iterator: VecFree<Iterator>,
     //
     pub null: Variable,
 }
@@ -35,6 +37,7 @@ impl Table {
             vec_bool: VecFree::new(),
             vec_function: VecFree::new(),
             vec_tuple: VecFree::new(),
+            vec_iterator: VecFree::new(),
             //
             null: Variable::new_null(0),
         }
@@ -89,6 +92,9 @@ impl Table {
                 Kind::Tuple => {
                     var.pos = self.vec_tuple.add(other.vec_tuple[var.pos].clone());
                 }
+                Kind::Iterator => {
+                    var.pos = self.vec_iterator.add(other.vec_iterator[var.pos].clone());
+                }
             }
 
             self.variables.insert(entry, var);
@@ -120,6 +126,16 @@ impl Table {
                     self,
                 ),
             ),
+            Kind::Iterator => {
+                // come back
+                /*self.set_iterator(
+                    entry,
+                    Iterator::from(
+                        &raw_value.split(CHAR_SEP_NAME).map(|s| s.trim()).collect(),
+                        self,
+                    ),
+                )*/
+            }
         }
     }
 
@@ -143,6 +159,7 @@ impl Table {
                     Kind::Bool => Variable::new_bool(pos),
                     Kind::Function => Variable::new_function(pos),
                     Kind::Tuple => Variable::new_tuple(pos),
+                    Kind::Iterator => Variable::new_iterator(pos),
                     Kind::Null | Kind::Operator => Variable::new_null(pos),
                 };
 
@@ -235,6 +252,16 @@ impl Table {
         }
     }
 
+    pub fn set_iterator(&mut self, entry: &str, value: Iterator) {
+        let pos_a = self.vec_iterator.add(value.clone());
+        let pos_b = self.set(entry, pos_a, Kind::Iterator);
+
+        if pos_a != pos_b {
+            self.vec_iterator.remove(pos_a);
+            self.vec_iterator[pos_b] = value;
+        }
+    }
+
     pub fn clear_kind(&mut self, kind: Kind) {
         let v = self.variables.clone();
 
@@ -297,6 +324,10 @@ impl Table {
         self.vec_tuple[pos].clone()
     }
 
+    pub fn get_iterator(&self, pos: usize) -> Iterator {
+        self.vec_iterator[pos].clone()
+    }
+
     pub fn get_mut_string(&mut self, pos: usize) -> &mut String {
         &mut self.vec_string[pos]
     }
@@ -319,6 +350,10 @@ impl Table {
 
     pub fn get_mut_tuple(&mut self, pos: usize) -> &mut Tuple {
         &mut self.vec_tuple[pos]
+    }
+
+    pub fn get_mut_iterator(&mut self, pos: usize) -> &mut Iterator {
+        &mut self.vec_iterator[pos]
     }
 
     pub fn remove_entry(&mut self, entry: &str) {
@@ -349,6 +384,9 @@ impl Table {
             Kind::Tuple => {
                 self.vec_tuple.remove(pos);
             }
+            Kind::Iterator => {
+                self.vec_iterator.remove(pos);
+            }
             _ => {}
         }
     }
@@ -371,6 +409,7 @@ impl Clone for Table {
             vec_bool: self.vec_bool.clone(),
             vec_function: self.vec_function.clone(),
             vec_tuple: self.vec_tuple.clone(),
+            vec_iterator: self.vec_iterator.clone(),
             //
             null: Variable::new_null(0),
         }

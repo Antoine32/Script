@@ -30,6 +30,8 @@ impl Function {
     pub fn run(&self, arguments: &Tuple, process: &Process, vec_table: &mut VecTable) -> Tuple {
         vec_table.add_level(self.table.clone());
 
+        println!("arg: {}", arguments);
+
         let enumerate = self.arguments.len() > 0 && {
             let name = get_real_name(self.arguments.get_name(self.arguments.len() - 1));
 
@@ -71,6 +73,9 @@ impl Function {
                     }
                     Kind::Tuple => {
                         table.set_tuple(name, arguments.table.vec_tuple[var.pos].clone());
+                    }
+                    Kind::Iterator => {
+                        table.set_iterator(name, arguments.table.vec_iterator[var.pos].clone());
                     }
                     Kind::Operator => {}
                     Kind::Null => {
@@ -119,7 +124,7 @@ impl Clone for Function {
             default_fn: self.default_fn,
             pos: self.pos,
             arguments: self.arguments.clone(),
-            table: self.table.clone()
+            table: self.table.clone(),
         }
     }
 }

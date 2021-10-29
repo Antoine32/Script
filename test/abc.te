@@ -7,21 +7,19 @@ fn test(n, m)
     return n > m
 end
 
-loop
-    b = 0
-
-    loop
+while c < 3
+    for b in (0, 1, 2, 3)
         a = 0
 
         if 1
-            loop
+            while a < 3
                 a += 1
                 print("a: " + a)
 
                 if a > 2
-                    b += 1
+                    #b += 1
                     print("b: " + b)
-                    break
+                    
                 elif a > 0
                     print("a1")
                 else
@@ -29,7 +27,7 @@ loop
                 end
             end
         else
-            b += 1
+            #b += 1
         end
 
         if test(5, 3) && true
@@ -43,20 +41,10 @@ loop
         if b > 2
             c += 1
             print("c: " + c)
-            break
         elif b > 0
             print("b1")
         else
             print("b2")
         end
-    end
-
-    if c > 2
-        print("c0")
-        break
-    elif c > 0
-        print("c1")
-    else
-        print("c2")
     end
 end

@@ -226,12 +226,9 @@ fn print(vec_table: &mut VecTable) -> Tuple {
         for i in 0..(text.len()) {
             let var = text.get(i);
 
-            match var.kind {
-                Kind::Tuple => prin(&text.table.get_tuple(var.pos)),
-                _ => match var.get_string(text.get_name(i), &text.table) {
-                    Ok(string) => print!("{}", string),
-                    Err(err) => print!("{}", err),
-                },
+            match var.get_string(text.get_name(i), &text.table) {
+                Ok(string) => print!("{}", string),
+                Err(err) => print!("{}", err),
             }
         }
     }

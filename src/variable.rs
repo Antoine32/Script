@@ -1,5 +1,5 @@
-use crate::tuple::*;
 use crate::{function::*, kind::*, table::*, Operator, OPERATORS};
+use crate::{iterator::*, tuple::*};
 use num::{BigInt, FromPrimitive, One, ToPrimitive, Zero};
 
 #[allow(unused_imports)]
@@ -50,6 +50,10 @@ impl Variable {
         Variable::new(Kind::Tuple, pos)
     }
 
+    pub fn new_iterator(pos: usize) -> Self {
+        Variable::new(Kind::Iterator, pos)
+    }
+
     pub fn set(&mut self, kind: Kind, pos: usize) {
         self.kind = kind;
         self.pos = pos;
@@ -83,7 +87,8 @@ impl Variable {
                 } else {
                     Ok(format!("{}", table.get_tuple(self.pos)))
                 }
-            } //_ => Err(self.get_err(entry, Kind::String)), // here in case I need it later and for consistency
+            }
+            Kind::Iterator => Ok(format!("{}", table.get_iterator(self.pos))), //_ => Err(self.get_err(entry, Kind::String)), // here in case I need it later and for consistency
         }
     }
 
@@ -174,6 +179,13 @@ impl Variable {
         match self.kind {
             Kind::Tuple => Ok(table.get_tuple(self.pos)),
             _ => Ok(Tuple::from(&vec![entry], table)), //_ => Err(self.get_err(entry, Kind::Tuple)),
+        }
+    }
+
+    pub fn get_iterator(&self, entry: &str, table: &Table) -> Result<Iterator, String> {
+        match self.kind {
+            Kind::Iterator => Ok(table.get_iterator(self.pos)),
+            _ => Err(self.get_err(entry, Kind::Iterator)),
         }
     }
 }

@@ -13,6 +13,7 @@ pub enum Kind {
     Null,
     Function,
     Tuple,
+    Iterator,
 }
 
 impl Kind {
@@ -26,6 +27,7 @@ impl Kind {
             Self::Null => "null",
             Self::Function => "function",
             Self::Tuple => "tuple",
+            Self::Iterator => "iterator",
         }
     }
 }
@@ -47,6 +49,7 @@ impl std::cmp::PartialEq for Kind {
             Self::Null => matches!(other, Self::Null),
             Self::Function => matches!(other, Self::Function),
             Self::Tuple => matches!(other, Self::Tuple),
+            Self::Iterator => matches!(other, Self::Iterator),
         }
     }
 }
@@ -62,6 +65,7 @@ impl Clone for Kind {
             Self::Null => Self::Null,
             Self::Function => Self::Function,
             Self::Tuple => Self::Tuple,
+            Self::Iterator => Self::Iterator,
         }
     }
 }

@@ -2,6 +2,7 @@ use crate::bigint_pow;
 use crate::get_real_name;
 use crate::kind::*;
 use crate::table::*;
+use crate::tuple::*;
 use crate::variable::*;
 use crate::vec_table::*;
 use num::{BigInt, Signed, Zero};
@@ -89,12 +90,91 @@ pub fn assign(
                 table.set_tuple(name_a, value);
             }
         }
+        Kind::Iterator => {
+            let value = var_b.get_iterator(name_b, table).unwrap();
+            vec_table.set_iterator(real_name, value.clone());
+            table.set_iterator(name_a, value);
+        }
         Kind::Operator | Kind::Function => {}
     }
 }
 
 pub fn addition(var_a: &Variable, var_b: &Variable, name_a: &str, name_b: &str, table: &mut Table) {
-    if var_a.kind == Kind::String || var_b.kind == Kind::String {
+    if var_a.kind == Kind::Tuple && var_b.kind == Kind::Tuple {
+        let mut tuple_a = var_a.get_tuple(name_a, table).unwrap();
+        let tuple_b = var_b.get_tuple(name_b, table).unwrap();
+
+        let len_a = tuple_a.len();
+        let len_b = tuple_b.len();
+
+        let mut vari_a;
+        let mut vari_b;
+
+        let mut nam_a;
+        let mut nam_b;
+
+        let mut new_name_a;
+        let mut new_name_b;
+
+        let mut tab;
+
+        if len_b > len_a {
+            for i in len_a..len_b {
+                tuple_a.push(tuple_b.get(i), tuple_b.get_name(i), &tuple_b.table);
+            }
+        }
+
+        fn set(vari: &Variable, tab: &mut Table, nam: &str, tuple: &Tuple, new_name: &str) {
+            match vari.kind {
+                Kind::String => {
+                    tab.set_string(new_name, vari.get_string(nam, &tuple.table).unwrap());
+                }
+                Kind::Number => {
+                    tab.set_number(new_name, vari.get_number(nam, &tuple.table).unwrap());
+                }
+                Kind::BigInt => {
+                    tab.set_bigint(new_name, vari.get_bigint(nam, &tuple.table).unwrap());
+                }
+                Kind::Bool => {
+                    tab.set_bool(new_name, vari.get_bool(nam, &tuple.table).unwrap());
+                }
+                Kind::Null => {
+                    tab.set_null(new_name, false);
+                }
+                Kind::Tuple => {
+                    tab.set_tuple(new_name, vari.get_tuple(nam, &tuple.table).unwrap());
+                }
+                Kind::Operator | Kind::Function | Kind::Iterator => {}
+            }
+        }
+
+        for i in 0..usize::min(len_a, len_b) {
+            tab = Table::new();
+
+            vari_a = tuple_a.get(i).clone();
+            vari_b = tuple_b.get(i).clone();
+
+            nam_a = tuple_a.get_name(i).to_string();
+            nam_b = tuple_b.get_name(i).to_string();
+
+            new_name_a = format!("a{}", nam_a);
+            new_name_b = format!("b{}", nam_b);
+
+            set(&vari_a, &mut tab, &nam_a, &tuple_a, &new_name_a);
+            set(&vari_b, &mut tab, &nam_b, &tuple_b, &new_name_b);
+
+            vari_a = tab.get(&new_name_a).clone();
+            vari_b = tab.get(&new_name_b).clone();
+
+            addition(&vari_a, &vari_b, &new_name_a, &new_name_b, &mut tab);
+
+            vari_a = tab.get(&new_name_a).clone();
+
+            tuple_a.set(i, &vari_a, &new_name_a, &tab);
+        }
+
+        table.set_tuple(name_a, tuple_a);
+    } else if var_a.kind == Kind::String || var_b.kind == Kind::String {
         table.set_string(
             name_a,
             format!(
@@ -123,7 +203,79 @@ pub fn substraction(
     name_b: &str,
     table: &mut Table,
 ) {
-    if var_a.kind == Kind::BigInt && var_b.kind == Kind::BigInt {
+    if var_a.kind == Kind::Tuple && var_b.kind == Kind::Tuple {
+        let tuple_b = table.get_tuple(var_b.pos);
+        let tuple_a = table.get_mut_tuple(var_a.pos);
+
+        let len_a = tuple_a.len();
+        let len_b = tuple_b.len();
+
+        let mut vari_a;
+        let mut vari_b;
+
+        let mut nam_a;
+        let mut nam_b;
+
+        let mut new_name_a;
+        let mut new_name_b;
+
+        let mut tab;
+
+        if len_b > len_a {
+            for _ in len_a..len_b {
+                tuple_a.push_null("", true);
+            }
+        }
+
+        fn set(vari: &Variable, tab: &mut Table, nam: &str, tuple: &Tuple, new_name: &str) {
+            match vari.kind {
+                Kind::String => {
+                    tab.set_string(new_name, vari.get_string(nam, &tuple.table).unwrap());
+                }
+                Kind::Number => {
+                    tab.set_number(new_name, vari.get_number(nam, &tuple.table).unwrap());
+                }
+                Kind::BigInt => {
+                    tab.set_bigint(new_name, vari.get_bigint(nam, &tuple.table).unwrap());
+                }
+                Kind::Bool => {
+                    tab.set_bool(new_name, vari.get_bool(nam, &tuple.table).unwrap());
+                }
+                Kind::Null => {
+                    tab.set_null(new_name, false);
+                }
+                Kind::Tuple => {
+                    tab.set_tuple(new_name, vari.get_tuple(nam, &tuple.table).unwrap());
+                }
+                Kind::Operator | Kind::Function | Kind::Iterator => {}
+            }
+        }
+
+        for i in 0..usize::min(tuple_a.len(), tuple_b.len()) {
+            tab = Table::new();
+
+            vari_a = tuple_a.get(i).clone();
+            vari_b = tuple_b.get(i).clone();
+
+            nam_a = tuple_a.get_name(i).to_string();
+            nam_b = tuple_b.get_name(i).to_string();
+
+            new_name_a = format!("a{}", nam_a);
+            new_name_b = format!("b{}", nam_b);
+
+            set(&vari_a, &mut tab, &nam_a, tuple_a, &new_name_a);
+            set(&vari_b, &mut tab, &nam_b, &tuple_b, &new_name_b);
+
+            vari_a = tab.get(&new_name_a).clone();
+            vari_b = tab.get(&new_name_b).clone();
+
+            substraction(&vari_a, &vari_b, &new_name_a, &new_name_b, &mut tab);
+
+            vari_a = tab.get(&new_name_a).clone();
+
+            tuple_a.set(i, &vari_a, &new_name_a, &tab);
+        }
+    } else if var_a.kind == Kind::BigInt && var_b.kind == Kind::BigInt {
         table.set_bigint(
             name_a,
             var_a.get_bigint(name_a, table).unwrap() - var_b.get_bigint(name_b, table).unwrap(),
@@ -307,6 +459,10 @@ fn local_equal(
             Kind::Function => false,
             Kind::Tuple => {
                 var_a.get_tuple(name_a, table).unwrap() == var_b.get_tuple(name_b, table).unwrap()
+            }
+            Kind::Iterator => {
+                var_a.get_iterator(name_a, table).unwrap()
+                    == var_b.get_iterator(name_b, table).unwrap()
             }
         };
     }

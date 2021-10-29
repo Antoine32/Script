@@ -1,4 +1,5 @@
 use crate::function::*;
+use crate::iterator::*;
 use crate::table::*;
 use crate::tuple::*;
 use crate::variable::*;
@@ -82,6 +83,10 @@ impl VecTable {
         self.tables[level].set_tuple(entry, value);
     }
 
+    pub fn set_iterator_specified(&mut self, level: usize, entry: &str, value: Iterator) {
+        self.tables[level].set_iterator(entry, value);
+    }
+
     pub fn set_null_specified(&mut self, level: usize, entry: &str) {
         self.tables[level].set_null(entry, true);
     }
@@ -143,6 +148,17 @@ impl VecTable {
         }
 
         self.set_tuple_specified(self.tables.len() - 1, entry, value);
+    }
+
+    pub fn set_iterator(&mut self, entry: &str, value: Iterator) {
+        for i in (0..(self.tables.len())).rev() {
+            if self.tables[i].contains(entry) {
+                self.set_iterator_specified(i, entry, value);
+                return;
+            }
+        }
+
+        self.set_iterator_specified(self.tables.len() - 1, entry, value);
     }
 
     pub fn set_null(&mut self, entry: &str) {

@@ -1,6 +1,8 @@
 use crate::get_real_name;
+use crate::iterator::*;
 use crate::kind::*;
 use crate::table::*;
+use crate::tup_kind::*;
 use crate::usize_to_string;
 use crate::variable::*;
 use crate::CHAR_SEP_NAME;
@@ -12,6 +14,8 @@ use crate::{eprint, eprintln};
 pub struct Tuple {
     pub table: Table,
     pub order: Vec<String>,
+    pub setup: bool,
+    pub tup_kind: TupKind,
 }
 
 impl Tuple {
@@ -19,6 +23,8 @@ impl Tuple {
         Self {
             table: Table::new(),
             order: Vec::new(),
+            setup: true,
+            tup_kind: TupKind::Inconditional,
         }
     }
 
@@ -26,7 +32,7 @@ impl Tuple {
         let mut tuple = Self::new();
 
         for name in names.iter() {
-            tuple.push_null(name);
+            tuple.push_null(name, true);
         }
 
         return tuple;
@@ -52,9 +58,9 @@ impl Tuple {
     }
 
     pub fn set(&mut self, pos: usize, var: &Variable, name: &str, table: &Table) {
-        if pos <= self.len() {
+        if pos >= self.len() {
             for _ in pos..(self.len()) {
-                self.push_null("");
+                self.push_null("", true);
             }
 
             self.push(var, name, table);
@@ -81,6 +87,10 @@ impl Tuple {
                     self.table
                         .set_tuple(name_b, table.vec_tuple[var.pos].clone());
                 }
+                Kind::Iterator => {
+                    self.table
+                        .set_iterator(name_b, table.vec_iterator[var.pos].clone());
+                }
                 Kind::Operator => {}
                 Kind::Null => {
                     self.table.set_null(name_b, true);
@@ -90,9 +100,9 @@ impl Tuple {
         }
     }
 
-    pub fn push_null(&mut self, name: &str) {
+    pub fn push_null(&mut self, name: &str, delete: bool) {
         let name = self.get_new_name(name);
-        self.table.set_null(&name, true);
+        self.table.set_null(&name, delete);
         self.order.push(name);
     }
 
@@ -118,6 +128,10 @@ impl Tuple {
             Kind::Tuple => {
                 self.table
                     .set_tuple(&name, table.vec_tuple[var.pos].clone());
+            }
+            Kind::Iterator => {
+                self.table
+                    .set_iterator(&name, table.vec_iterator[var.pos].clone());
             }
             Kind::Operator => {}
             Kind::Null => {
@@ -156,6 +170,12 @@ impl Tuple {
     pub fn set_tuple(&mut self, entry: &str, value: Self) {
         let name = self.get_new_name(entry);
         self.table.set_tuple(&name, value);
+        self.order.push(name);
+    }
+
+    pub fn set_iterator(&mut self, entry: &str, value: Iterator) {
+        let name = self.get_new_name(entry);
+        self.table.set_iterator(&name, value);
         self.order.push(name);
     }
 
@@ -259,6 +279,13 @@ impl std::cmp::PartialEq for Tuple {
                                 return false;
                             }
                         }
+                        Kind::Iterator => {
+                            if var_self.get_iterator(name_self, &self.table).unwrap()
+                                != var_other.get_iterator(name_other, &self.table).unwrap()
+                            {
+                                return false;
+                            }
+                        }
                     }
                 } else {
                     return false;
@@ -277,6 +304,8 @@ impl Clone for Tuple {
         Self {
             table: self.table.clone(),
             order: self.order.clone(),
+            setup: self.setup,
+            tup_kind: self.tup_kind,
         }
     }
 }

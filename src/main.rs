@@ -6,12 +6,11 @@ use std::io::BufReader;
 /*
     the features are
 
-        time : 
+        time :
             to get the processing time and the running time
 
-        print : 
+        print :
             to get detail of the process to appear on the terminal useful for finding a problem during devlopement of the language
-        
         pause :
             pause at the end of the program
 */
@@ -33,11 +32,14 @@ mod function;
 mod function_kind;
 mod instruction;
 mod instruction_fn;
+mod iterator;
+mod iterator_kind;
 mod kind;
 mod loop_kind;
 mod operation;
 mod process;
 mod table;
+mod tup_kind;
 mod tuple;
 mod variable;
 mod vec_free;
@@ -48,6 +50,7 @@ use function::*;
 use operation::*;
 use process::*;
 use table::*;
+use tup_kind::*;
 use tuple::*;
 use vec_table::*;
 
@@ -283,7 +286,14 @@ pub fn process_text(content: String, vec_table: &mut VecTable) -> Process {
     let mut n: usize = 0;
 
     while lines.len() > 0 {
-        process_lines.from(lines.pop().unwrap(), &mut n, vec_table);
+        process_lines.from(
+            lines.pop().unwrap(),
+            &mut n,
+            vec_table,
+            0,
+            false,
+            TupKind::None,
+        );
         //process_lines.merge(processed_line);
 
         n += 1;
