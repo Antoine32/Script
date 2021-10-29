@@ -1,11 +1,13 @@
-#fn test(n, m)
-    #print("allo " + n + " : " )
-#end
+a = "allo"
+b = "allo"
 
-a = 5, 8
-
-b = "allo" + a
-
-print(b)
-
-#test(a)
+match a
+    case 0
+        print("a")
+    case 1
+        print("b")
+    case "allo"
+        print("c")
+    case _
+        print("d")
+end

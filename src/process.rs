@@ -22,6 +22,7 @@ pub struct Process {
     incomplete_loop: Vec<(usize, usize, usize, usize)>,
     tables: Vec<Table>,
     loop_counter: Vec<usize>,
+    incomplete_match: Vec<usize>,
 }
 
 impl Process {
@@ -33,6 +34,7 @@ impl Process {
             incomplete_loop: Vec::new(),
             tables: Vec::new(),
             loop_counter: Vec::new(),
+            incomplete_match: Vec::new(),
         }
     }
 
@@ -58,10 +60,18 @@ impl Process {
 
     #[cfg(feature = "print")]
     pub fn print_line(instuction: &Instruction, names: &Vec<String>, table: &Table) {
-        eprint!("{}\t", instuction);
+        eprint!("{} ", instuction);
+
+        let mut i = 0;
 
         for name in names.iter() {
-            Self::print_var(name, table);
+            if i < 3 {
+                Self::print_var(name, table);
+                i += 1;
+            } else {
+                eprint!("..."); // prevent to many things to be shown on the terminal, change if you want to see them all
+                break;
+            }
         }
 
         eprintln!("");
@@ -664,7 +674,7 @@ impl Process {
             }
 
             eprint!(
-                "|{}: {}: |{}||\t",
+                "|{}: {}: |{}|| ",
                 simplified_name,
                 var.kind,
                 var.get_string(name, table).unwrap()
@@ -953,6 +963,32 @@ impl Process {
                         j += 1;
                     }
                 }
+                Instruction::MATCH => {
+                    let var = vars[0].clone();
+                    let name = names[0].clone();
+
+                    let mut t_var;
+                    let mut t_name;
+                    let mut t_pos;
+
+                    for i in (1..names.len()).step_by(2) {
+                        t_var = vars[i].clone();
+                        t_name = names[i].clone();
+                        t_pos = string_to_usize(&names[i + 1]);
+
+                        if crate::instruction_fn::local_equal(
+                            &var,
+                            &t_var,
+                            &name,
+                            &t_name,
+                            &this.table,
+                        ) || t_var.kind == Kind::Null
+                        {
+                            j = t_pos;
+                            break;
+                        }
+                    }
+                }
                 Instruction::STOP => {
                     break;
                 }
@@ -1206,7 +1242,10 @@ impl Process {
                                                     self.loop_counter[i] -= 1;
                                                 }
 
-                                                if pos == 1 {
+                                                if pos > 0 {
+                                                    if pos == 2 {
+                                                        self.incomplete_match.pop();
+                                                    }
                                                     break;
                                                 }
                                             } else {
@@ -1395,7 +1434,6 @@ impl Process {
                                 .instructions
                                 .push((Instruction::GOTOFN, vec![name_a, name_b])),
                             Operator::If => {
-                                //delete = (false, false);
                                 self.instructions.insert(
                                     self.instructions.len() - operation_count,
                                     (Instruction::UPLV, Vec::new()),
@@ -1471,6 +1509,64 @@ impl Process {
 
                                 delete = (false, false);
                             }
+                            Operator::Match => {
+                                self.instructions.insert(
+                                    self.instructions.len() - operation_count,
+                                    (Instruction::UPLV, Vec::new()),
+                                );
+                                vec_table.add_level(Table::new());
+
+                                self.instructions.push((Instruction::MATCH, vec![name_b]));
+
+                                self.incomplete_function.push((
+                                    self.instructions.len(),
+                                    operation_count,
+                                    3,
+                                    FunctionKind::Conditional,
+                                ));
+
+                                self.incomplete_match.push(self.instructions.len() - 1);
+
+                                for i in 0..self.loop_counter.len() {
+                                    self.loop_counter[i] += 1;
+                                }
+                            }
+                            Operator::Case => {
+                                let (position, level, pos, function_kind) =
+                                    self.incomplete_function.pop().unwrap();
+
+                                if pos == 3 {
+                                    self.incomplete_function.push((
+                                        self.instructions.len(),
+                                        0,
+                                        2,
+                                        FunctionKind::Conditional,
+                                    ));
+                                } else {
+                                    self.incomplete_function.push((
+                                        position,
+                                        level,
+                                        pos,
+                                        function_kind,
+                                    ));
+
+                                    self.incomplete_function.push((
+                                        self.instructions.len(),
+                                        0,
+                                        0,
+                                        FunctionKind::Conditional,
+                                    ));
+                                }
+
+                                let position =
+                                    self.incomplete_match[self.incomplete_match.len() - 1];
+
+                                let len = self.instructions.len()
+                                    + (self.instructions[position].1.len() - 1) / 2;
+
+                                self.instructions[position].1.push(name_b);
+                                self.instructions[position].1.push(usize_to_string(len));
+                            }
                             Operator::Loop => {
                                 self.instructions.push((Instruction::UPLV, Vec::new()));
                                 vec_table.add_level(Table::new());
@@ -1529,8 +1625,6 @@ impl Process {
                                 self.loop_counter.push(0);
 
                                 delete = (false, false);
-                            }
-                            Operator::Match => { //////////////////////////
                             }
                             Operator::Break => {
                                 self.incomplete_loop.push((
@@ -1633,6 +1727,7 @@ impl Clone for Process {
             incomplete_loop: self.incomplete_loop.clone(),
             tables: self.tables.clone(),
             loop_counter: self.loop_counter.clone(),
+            incomplete_match: self.incomplete_match.clone(),
         }
     }
 }

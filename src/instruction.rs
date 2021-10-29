@@ -28,6 +28,7 @@ pub enum Instruction {
     TUP,    // make into a tuple ,
     PUSH,
     COND,   // condition if for while
+    MATCH,  // match x; case y
     STOP,   // make the program stop
     UPLV,   // add a level to the table
     DROPLV, // remove a level from the table
@@ -64,11 +65,12 @@ impl Instruction {
             Self::TUP => 23,
             Self::PUSH => 24,
             Self::COND => 25,
-            Self::STOP => 26,
-            Self::UPLV => 27,
-            Self::DROPLV => 28,
-            Self::IN => 29,
-            Self::NEXT => 30,
+            Self::MATCH => 26,
+            Self::STOP => 27,
+            Self::UPLV => 28,
+            Self::DROPLV => 29,
+            Self::IN => 30,
+            Self::NEXT => 31,
         }
     }
 }
@@ -102,6 +104,7 @@ impl std::fmt::Display for Instruction {
             Self::TUP => write!(f, "TUP"),
             Self::PUSH => write!(f, "PUSH"),
             Self::COND => write!(f, "COND"),
+            Self::MATCH => write!(f, "MATCH"),
             Self::STOP => write!(f, "STOP"),
             Self::UPLV => write!(f, "UPLV"),
             Self::DROPLV => write!(f, "DROPLV"),
@@ -140,6 +143,7 @@ impl std::cmp::PartialEq for Instruction {
             Self::TUP => matches!(other, Self::TUP),
             Self::PUSH => matches!(other, Self::PUSH),
             Self::COND => matches!(other, Self::COND),
+            Self::MATCH => matches!(other, Self::MATCH),
             Self::STOP => matches!(other, Self::STOP),
             Self::UPLV => matches!(other, Self::UPLV),
             Self::DROPLV => matches!(other, Self::DROPLV),
@@ -178,6 +182,7 @@ impl Clone for Instruction {
             Self::TUP => Self::TUP,
             Self::PUSH => Self::PUSH,
             Self::COND => Self::COND,
+            Self::MATCH => Self::MATCH,
             Self::STOP => Self::STOP,
             Self::UPLV => Self::UPLV,
             Self::DROPLV => Self::DROPLV,

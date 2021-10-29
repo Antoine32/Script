@@ -419,12 +419,12 @@ pub fn bit_or(var_a: &Variable, var_b: &Variable, name_a: &str, name_b: &str, ta
     )
 }
 
-fn local_equal(
+pub fn local_equal(
     var_a: &Variable,
     var_b: &Variable,
     name_a: &str,
     name_b: &str,
-    table: &mut Table,
+    table: &Table,
 ) -> bool {
     let mut equality = {
         if var_a.kind == var_b.kind {
