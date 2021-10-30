@@ -9,7 +9,7 @@ use rand::prelude::*;
 #[allow(unused_imports)]
 use crate::{eprint, eprintln};
 
-pub const DEFAULTS_FUNCTIONS: [DefaultFunction; 12] = [
+pub const DEFAULTS_FUNCTIONS: [DefaultFunction; 13] = [
     DefaultFunction::Read,
     DefaultFunction::Pause,
     DefaultFunction::Print,
@@ -22,6 +22,7 @@ pub const DEFAULTS_FUNCTIONS: [DefaultFunction; 12] = [
     DefaultFunction::Rand,
     DefaultFunction::Kind,
     DefaultFunction::Parse,
+    DefaultFunction::Range,
 ];
 
 pub const DEFAULTS_FUNCTIONS_STR: [&str; DEFAULTS_FUNCTIONS.len()] = [
@@ -37,6 +38,7 @@ pub const DEFAULTS_FUNCTIONS_STR: [&str; DEFAULTS_FUNCTIONS.len()] = [
     DEFAULTS_FUNCTIONS[9].get_str(),
     DEFAULTS_FUNCTIONS[10].get_str(),
     DEFAULTS_FUNCTIONS[11].get_str(),
+    DEFAULTS_FUNCTIONS[12].get_str(),
 ];
 
 pub const DEFAULTS_FUNCTIONS_ARGS: [&[&str]; DEFAULTS_FUNCTIONS.len()] = [
@@ -52,6 +54,7 @@ pub const DEFAULTS_FUNCTIONS_ARGS: [&[&str]; DEFAULTS_FUNCTIONS.len()] = [
     DEFAULTS_FUNCTIONS[9].get_arguments(),
     DEFAULTS_FUNCTIONS[10].get_arguments(),
     DEFAULTS_FUNCTIONS[11].get_arguments(),
+    DEFAULTS_FUNCTIONS[12].get_arguments(),
 ];
 
 pub enum DefaultFunction {
@@ -67,6 +70,7 @@ pub enum DefaultFunction {
     Rand,
     Kind,
     Parse,
+    Range,
 }
 
 impl DefaultFunction {
@@ -94,6 +98,7 @@ impl DefaultFunction {
             Self::Rand => "rand()",
             Self::Kind => "kind()",
             Self::Parse => "parse()",
+            Self::Range => "range()",
         }
     }
 
@@ -111,6 +116,7 @@ impl DefaultFunction {
             Self::Rand => &RAND_ARGS,
             Self::Kind => &KIND_ARGS,
             Self::Parse => &PARSE_ARGS,
+            Self::Range => &RANGE_ARGS,
         }
     }
 
@@ -128,6 +134,7 @@ impl DefaultFunction {
             Self::Rand => rand(vec_table),
             Self::Kind => kind(vec_table),
             Self::Parse => parse(vec_table),
+            Self::Range => range(vec_table),
         }
     }
 }
@@ -153,6 +160,7 @@ impl std::cmp::PartialEq for DefaultFunction {
             Self::Rand => matches!(other, Self::Rand),
             Self::Kind => matches!(other, Self::Kind),
             Self::Parse => matches!(other, Self::Parse),
+            Self::Range => matches!(other, Self::Range),
         }
     }
 }
@@ -172,6 +180,7 @@ impl Clone for DefaultFunction {
             Self::Rand => Self::Rand,
             Self::Kind => Self::Kind,
             Self::Parse => Self::Parse,
+            Self::Range => Self::Range,
         }
     }
 }
@@ -381,6 +390,8 @@ fn parse(vec_table: &mut VecTable) -> Tuple {
 
     let var = table.get("str").get_string("str", table).unwrap();
 
+    /////////// redo this to use "process.rs"
+
     if var == "null" {
         tuple.set_null("");
     } else {
@@ -394,6 +405,85 @@ fn parse(vec_table: &mut VecTable) -> Tuple {
                 },
             },
         };
+    }
+
+    return tuple;
+}
+
+const RANGE_ARGS: [&str; 3] = ["value", "max", "step"];
+
+fn range(vec_table: &mut VecTable) -> Tuple {
+    let table = vec_table.get_level(vec_table.len() - 1);
+    let mut tuple = Tuple::new();
+
+    let value_kind = table.get("value").kind;
+    let max_kind = table.get("max").kind;
+    let step_kind = table.get("step").kind;
+
+    let kind = {
+        if value_kind == Kind::Number || max_kind == Kind::Number || step_kind == Kind::Number {
+            Kind::Number
+        } else {
+            Kind::BigInt
+        }
+    };
+
+    if kind == Kind::Number {
+        let mut value = get_number(table, "value");
+        let mut max = get_number(table, "max");
+
+        let mut step = get_number(table, "step");
+
+        if max_kind == Kind::Null {
+            let buf = value;
+            value = max;
+            max = buf;
+        }
+
+        if step_kind == Kind::Null {
+            if value <= max {
+                step = 1f64;
+            } else {
+                step = -1f64;
+            }
+        }
+
+        let mut table = Table::new();
+        table.set_number("_value", value);
+        table.set_number("_max", max);
+        table.set_number("_step", step);
+
+        tuple.push(table.get("_value"), "_value", &table);
+        tuple.push(table.get("_max"), "_max", &table);
+        tuple.push(table.get("_step"), "_step", &table);
+    } else {
+        let mut value = get_bigint(table, "value");
+        let mut max = get_bigint(table, "max");
+
+        let mut step = get_bigint(table, "step");
+
+        if max_kind == Kind::Null {
+            let buf = value;
+            value = max;
+            max = buf;
+        }
+
+        if step_kind == Kind::Null {
+            if value <= max {
+                step = BigInt::from(1);
+            } else {
+                step = BigInt::from(-1);
+            }
+        }
+
+        let mut table = Table::new();
+        table.set_bigint("_value", value);
+        table.set_bigint("_max", max);
+        table.set_bigint("_step", step);
+
+        tuple.push(table.get("_value"), "_value", &table);
+        tuple.push(table.get("_max"), "_max", &table);
+        tuple.push(table.get("_step"), "_step", &table);
     }
 
     return tuple;

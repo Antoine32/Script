@@ -1010,17 +1010,13 @@ impl Process {
                 Instruction::IN => {
                     let tuple = this.table.get_tuple(vars[1].pos).clone();
                     let iterator = this.table.get_mut_iterator(vars[0].pos);
-
-                    match vars[1].kind {
-                        Kind::Tuple => iterator.set_finite(&tuple),
-                        _ => {}
-                    }
+                    iterator.set(&tuple);
                 }
                 Instruction::NEXT => {
                     let len = this.tables.len() - 1;
                     let table = &mut this.tables[len];
-                    let variables = table.get_mut_iterator(table.get(&names[0]).pos);
-                    let ans = variables.next(vec_table);
+                    let iterator = table.get_mut_iterator(vars[0].pos);
+                    let ans = iterator.next(vec_table);
 
                     if ans {
                         j += 1;
@@ -1619,7 +1615,7 @@ impl Process {
                             }
                             Operator::For => {
                                 self.instructions.insert(
-                                    self.instructions.len() - operation_count,
+                                    self.instructions.len(),
                                     (Instruction::UPLV, Vec::new()),
                                 );
                                 vec_table.add_level(Table::new());
